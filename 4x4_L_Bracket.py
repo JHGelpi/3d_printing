@@ -255,8 +255,10 @@ def main():
     # Zoom viewport to fit
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D':
-            with bpy.context.temp_override(area=area):
-                bpy.ops.view3d.view_all()
+            region = next((r for r in area.regions if r.type == 'WINDOW'), None)
+            if region:
+                with bpy.context.temp_override(area=area, region=region):
+                    bpy.ops.view3d.view_all()
             break
 
     print("=" * 50)
