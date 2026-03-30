@@ -1,3 +1,9 @@
+# Claude Code internal files (worktrees, settings)
+.claude/
+
+# 3D print output artifacts
+output/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
