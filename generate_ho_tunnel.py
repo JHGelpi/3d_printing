@@ -83,7 +83,7 @@ FLOOR_SCREW_POS = [
 # ── Mounting brackets ──────────────────────────────────────────────
 # L-shaped brackets: vertical part flush with side wall, horizontal extension at top
 # extending inward.  Screw holes on the BOTTOM face of horizontal extension.
-BRKT_HEIGHT = 1.0 * IN  #  25.4 mm — vertical height above ceiling
+BRKT_HEIGHT = 7.0 * IN  #  25.4 mm — vertical height above ceiling
 BRKT_LEN = 2.0 * IN  #  50.8 mm — bracket length along Y (tunnel axis)
 BRKT_HORIZ_EXT = -2.0 * IN  #  50.8 mm — horizontal extension inward from wall
 BRKT_SHANK_D = 0.18 * IN  #   4.57 mm — bracket screw shank diameter
@@ -93,8 +93,8 @@ BRKT_SCREW_N = 3  # screw holes per bracket
 # Hole positioning controls:
 #   BRKT_HOLE_END_MARGIN: distance from front/back edges to first/last hole (along Y)
 #   BRKT_HOLE_X_OFFSET: shift holes along X (+ = toward tunnel center, - = toward wall)
-BRKT_HOLE_END_MARGIN = 0.25 * IN  #   6.35 mm — margin from each end (front/back) along Y
-BRKT_HOLE_X_OFFSET = 0.0  # mm — offset from center of horizontal extension (±X)
+BRKT_HOLE_END_MARGIN = 0.3 * IN  #   6.35 mm — margin from each end (front/back) along Y
+BRKT_HOLE_X_OFFSET = -0.25 * IN  # mm — offset from center of horizontal extension (±X)
 
 # ── Mesh quality ──────────────────────────────────────────────────
 ARCH_SEGS = 32
