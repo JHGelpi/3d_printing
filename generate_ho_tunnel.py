@@ -7,7 +7,7 @@ Assembly overview:
   • The 1×6 board (0.75" × 5.5" actual) is the tunnel floor, hung from the ceiling.
   • The tunnel body wraps around the board and track — open at both ends.
   • A solid floor panel (Z = 0) has four countersunk screw holes to fasten the
-    tunnel onto the 1×6 board from inside the tunnel.
+    tunnel onto the 1×6 board from below (countersinks on exterior bottom face).
   • A solid ceiling panel at the top (Z = TOTAL_H) has no holes.
   • Decorative end portals are taller than the side walls (7" vs 3").
   • Each end portal has an arched train opening and a smaller decorative arch window.
@@ -66,8 +66,8 @@ SIDE_WIN_H       = 1.0 * IN   #  25.4 mm — window height
 SIDE_WIN_Z_BOT   = 0.5 * IN   #  12.7 mm — window bottom above INTERIOR floor
 
 # ── Floor panel screw holes ────────────────────────────────────────
-# Countersink opens on the interior (top) face of the floor panel (Z = WALL_T).
-# Screw head sits flush with the interior floor.  Adjust to your fastener.
+# Countersink opens on the exterior (bottom) face of the floor panel (Z = 0).
+# Screw head sits flush with the exterior floor.  Adjust to your fastener.
 FLOOR_SHANK_D    = 0.25 * IN  #   6.35 mm — shaft / shank clearance diameter
 FLOOR_CSK_D      = 0.5  * IN  #  12.7  mm — countersink outer diameter at surface
 FLOOR_CSK_DEPTH  = 3.5         # mm       — countersink depth
@@ -198,6 +198,39 @@ def cut_csunk_down(target, name, cx, cy, top_z, depth,
     bool_diff(target, csk)
 
 
+def cut_csunk_up(target, name, cx, cy, bottom_z, depth,
+                 shank_d, csk_d, csk_depth):
+    """
+    Cut a countersunk hole going UP from bottom_z through 'depth' mm of material.
+    The countersink widens at the bottom face (bottom_z) — screw head recessed there.
+
+    Two-pass approach (from generate_flat_bracket.py pattern):
+      Pass 1 — straight shank cylinder through full depth.
+      Pass 2 — conical frustum at the bottom face only.
+    """
+    slope = (csk_d / 2 - shank_d / 2) / csk_depth
+
+    # Pass 1: shank (straight, full depth + overshoot both ends)
+    shank_h  = depth + 2 * BOOL_EXTRA
+    shank_cz = bottom_z + depth / 2
+    shank = make_cone_cutter(
+        f"{name}_shank", cx, cy, shank_cz,
+        shank_d / 2, shank_d / 2, shank_h,
+    )
+    bool_diff(target, shank)
+
+    # Pass 2: countersink frustum (wide at bottom, narrow at depth)
+    csk_h   = csk_depth + BOOL_EXTRA
+    csk_cz  = bottom_z + csk_depth / 2
+    r_bot_v = csk_d / 2 + slope * (BOOL_EXTRA / 2)          # wide at bottom
+    r_top_v = max(shank_d / 2 - slope * (BOOL_EXTRA / 2), 0.01)  # narrow at top
+    csk = make_cone_cutter(
+        f"{name}_csk", cx, cy, csk_cz,
+        r_bot_v, r_top_v, csk_h,
+    )
+    bool_diff(target, csk)
+
+
 def make_arch_cutter(name, w, spring_h, r, depth, segs=ARCH_SEGS):
     """
     Solid arch cutter: rectangle [w × spring_h] topped with a semicircle
@@ -243,15 +276,15 @@ bpy.context.scene.collection.children.link(col)
 
 # ── 1. FLOOR PANEL ────────────────────────────────────────────────
 # Solid slab at Z = 0 → WALL_T.
-# Four countersunk screw holes; heads recessed into the interior top face (Z = WALL_T).
+# Four countersunk screw holes; heads recessed into the exterior bottom face (Z = 0).
 
 floor = box("FloorPanel", 0, 0, WALL_T / 2, TUNNEL_W, TUNNEL_LEN, WALL_T)
 link_to(col, floor)
 
 for i, (sx, sy) in enumerate(FLOOR_SCREW_POS):
-    cut_csunk_down(floor, f"FloorHole_{i}", sx, sy,
-                   WALL_T, WALL_T,
-                   FLOOR_SHANK_D, FLOOR_CSK_D, FLOOR_CSK_DEPTH)
+    cut_csunk_up(floor, f"FloorHole_{i}", sx, sy,
+                 0, WALL_T,
+                 FLOOR_SHANK_D, FLOOR_CSK_D, FLOOR_CSK_DEPTH)
 
 
 # ── 2. CEILING PANEL (solid — no holes) ────────────────────────────
