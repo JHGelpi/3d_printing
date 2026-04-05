@@ -12,8 +12,9 @@ Assembly overview:
   • Decorative end portals are taller than the side walls (7" vs 3").
   • Each end portal has an arched train opening and a smaller decorative arch window.
   • Three rectangular windows per side wall.
-  • Flush rectangular mounting brackets extend above the ceiling on each side wall,
-    near each end. Screw holes are on the TOP face (vertical, along tunnel axis).
+  • L-shaped mounting brackets extend above the ceiling on each side wall near each end.
+    Vertical part is flush with wall; horizontal part (2" long) extends inward.
+    Screw holes are on the TOP face of horizontal extension (along tunnel axis).
 
 Coordinate system (all mm, origin at tunnel floor exterior face):
   Y  =  along track  (tunnel length)
@@ -24,7 +25,7 @@ Print notes (Bambu P2S, 256 × 256 × 256 mm):
   FloorPanel / CeilingPanel : 241 × 152 mm — print flat    ✓
   Side walls                : 241 × ~102 mm — print flat   ✓
   End portals               : 152 × 178 mm — print flat    ✓
-  Brackets                  : small, print upright          ✓
+  L-brackets                : ~51 × 51 mm — print flat (L side down)  ✓
   (All components fit individually; full assembled height exceeds bed.)
 """
 
@@ -80,10 +81,11 @@ FLOOR_SCREW_POS  = [
 ]
 
 # ── Mounting brackets ──────────────────────────────────────────────
-# Flush rectangular tabs, same wall-face as the side walls, that rise above the
-# ceiling panel.  Screw holes on the TOP face, spaced along Y (parallel to tunnel).
-BRKT_HEIGHT    = 1.0  * IN   #  25.4 mm — independently configurable height above ceiling
-BRKT_LEN       = 2.0  * IN   #  50.8 mm — bracket length along Y
+# L-shaped brackets: vertical part flush with side wall, horizontal extension at top
+# extending inward.  Screw holes on the TOP face of horizontal extension.
+BRKT_HEIGHT    = 1.0  * IN   #  25.4 mm — vertical height above ceiling
+BRKT_LEN       = 2.0  * IN   #  50.8 mm — bracket length along Y (tunnel axis)
+BRKT_HORIZ_EXT = 2.0  * IN   #  50.8 mm — horizontal extension inward from wall
 BRKT_SHANK_D   = 0.18 * IN   #   4.57 mm — bracket screw shank diameter
 BRKT_CSK_D     = 0.35 * IN   #   8.89 mm — bracket countersink outer diameter
 BRKT_CSK_DEPTH = 2.0          # mm       — bracket countersink depth
@@ -133,6 +135,19 @@ def bool_diff(target, cutter):
     mod.solver = "EXACT"
     bpy.ops.object.modifier_apply(modifier=mod.name)
     bpy.data.objects.remove(cutter, do_unlink=True)
+
+
+def bool_union(target, obj_to_merge):
+    """Union obj_to_merge into target in-place, then remove obj_to_merge."""
+    bpy.context.view_layer.objects.active = target
+    target.select_set(True)
+    obj_to_merge.hide_viewport = False
+    mod = target.modifiers.new("BoolUnion", "BOOLEAN")
+    mod.operation = "UNION"
+    mod.object = obj_to_merge
+    mod.solver = "EXACT"
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.data.objects.remove(obj_to_merge, do_unlink=True)
 
 
 def link_to(col, obj):
@@ -351,13 +366,13 @@ for end_label, py in [("Front",  TUNNEL_LEN / 2 - WALL_T / 2),
 
 
 # ── 5. MOUNTING BRACKETS ──────────────────────────────────────────
-# Flush rectangular tabs rising above the ceiling panel, one near each
+# L-shaped brackets rising above the ceiling panel, one near each
 # end of each side wall (4 total).
 #
-# • Same face as the side wall (flush outer surface, WALL_T thick in X).
-# • Height = BRKT_HEIGHT (independent variable).
-# • Screw holes on the TOP face, lined up along Y (parallel to tunnel axis).
-# • All holes countersunk.
+# • Vertical part: flush with side wall, extends upward from ceiling
+# • Horizontal part: at top of vertical, extends inward (toward tunnel center)
+# • Screw holes on the BOTTOM face of horizontal part, along Y (parallel to tunnel axis)
+# • All holes countersunk (heads recessed into bottom face)
 
 BRKT_TOP_Z = TOTAL_H + BRKT_HEIGHT   # Z of bracket top face
 
@@ -366,18 +381,42 @@ for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
     for end_label, by in [("Front",  TUNNEL_LEN / 2 - BRKT_LEN / 2),
                             ("Back",  -(TUNNEL_LEN / 2 - BRKT_LEN / 2))]:
 
-        brkt = box(f"Bracket_{side_label}_{end_label}",
-                   wx, by,
-                   TOTAL_H + BRKT_HEIGHT / 2,
-                   WALL_T, BRKT_LEN, BRKT_HEIGHT)
+        # Vertical part: flush with side wall
+        brkt_vert = box(f"BracketVert_{side_label}_{end_label}",
+                        wx, by,
+                        TOTAL_H + BRKT_HEIGHT / 2,
+                        WALL_T, BRKT_LEN, BRKT_HEIGHT)
+
+        # Horizontal part: extends inward from top of vertical part
+        # For left wall: extends toward +X (inward)
+        # For right wall: extends toward -X (inward)
+        if side_label == "Left":
+            # Inner edge of vertical part is at: wx + WALL_T/2
+            # Center of horizontal extension: wx + WALL_T/2 + BRKT_HORIZ_EXT/2
+            horiz_cx = wx + WALL_T / 2 + BRKT_HORIZ_EXT / 2
+        else:  # Right
+            # Inner edge of vertical part is at: wx - WALL_T/2
+            # Center of horizontal extension: wx - WALL_T/2 - BRKT_HORIZ_EXT/2
+            horiz_cx = wx - WALL_T / 2 - BRKT_HORIZ_EXT / 2
+
+        brkt_horiz = box(f"BracketHoriz_{side_label}_{end_label}",
+                         horiz_cx, by,
+                         TOTAL_H + BRKT_HEIGHT - WALL_T / 2,
+                         BRKT_HORIZ_EXT, BRKT_LEN, WALL_T)
+
+        # Union vertical and horizontal parts into L-shape
+        bool_union(brkt_vert, brkt_horiz)
+        brkt = brkt_vert
+        brkt.name = f"Bracket_{side_label}_{end_label}"
         link_to(col, brkt)
 
-        # BRKT_SCREW_N countersunk holes along Y on the top face
+        # BRKT_SCREW_N countersunk holes along Y on the bottom face of horizontal part
+        horiz_bottom_z = TOTAL_H + BRKT_HEIGHT - WALL_T
         for hi in range(BRKT_SCREW_N):
             hy = by - BRKT_LEN / 2 + (hi + 1) * BRKT_LEN / (BRKT_SCREW_N + 1)
-            cut_csunk_down(brkt, f"BrktHole_{side_label}_{end_label}_{hi}",
-                           wx, hy, BRKT_TOP_Z, BRKT_HEIGHT,
-                           BRKT_SHANK_D, BRKT_CSK_D, BRKT_CSK_DEPTH)
+            cut_csunk_up(brkt, f"BrktHole_{side_label}_{end_label}_{hi}",
+                         horiz_cx, hy, horiz_bottom_z, WALL_T,
+                         BRKT_SHANK_D, BRKT_CSK_D, BRKT_CSK_DEPTH)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -408,7 +447,8 @@ print(f"  Portal height         : {PORTAL_H:.1f} mm  ({PORTAL_H/IN:.2f}\")")
 print(f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall")
 print(f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
       f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}")
-print(f"  Bracket height        : {BRKT_HEIGHT:.1f} mm  ({BRKT_HEIGHT/IN:.2f}\")")
+print(f"  L-bracket dimensions  : {BRKT_HEIGHT:.1f} mm high × {BRKT_HORIZ_EXT:.1f} mm extension  "
+      f"({BRKT_HEIGHT/IN:.2f}\" × {BRKT_HORIZ_EXT/IN:.2f}\")")
 print(f"  Bracket screw holes   : Ø{BRKT_SHANK_D:.2f} mm × {BRKT_SCREW_N} per bracket × 4 brackets")
 print(f"  Output dir            : {output_dir}")
 print("=" * 62)
