@@ -87,6 +87,9 @@ The `output/` directory is gitignored. Generated STL/3MF files go here. Keep sou
 # General
 This project is used to track my 3D printing models
 
+## GitHub Commits
+- When you are making code changes, ensure you always author an accurate and concise commit message.
+
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
 
