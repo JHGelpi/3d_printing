@@ -14,7 +14,7 @@ Assembly overview:
   • Three rectangular windows per side wall.
   • L-shaped mounting brackets extend above the ceiling on each side wall near each end.
     Vertical part is flush with wall; horizontal part (2" long) extends inward.
-    Screw holes are on the TOP face of horizontal extension (along tunnel axis).
+    Screw holes are on the BOTTOM face of horizontal extension (along tunnel axis).
 
 Coordinate system (all mm, origin at tunnel floor exterior face):
   Y  =  along track  (tunnel length)
@@ -42,69 +42,75 @@ import bpy
 IN = 25.4  # mm per inch
 
 # ── Tunnel shell ──────────────────────────────────────────────────
-TUNNEL_LEN    = 9.5  * IN   # 241.3 mm — outer length along Y (track axis)
-TUNNEL_W      = 6.0  * IN   # 152.4 mm — outer width along X
-WALL_T        = 0.5  * IN   #  12.7 mm — all wall / panel thickness
-SIDE_H        = 3.0  * IN   #  76.2 mm — interior clear height
+TUNNEL_LEN = 9.5 * IN  # 241.3 mm — outer length along Y (track axis)
+TUNNEL_W = 6.0 * IN  # 152.4 mm — outer width along X
+WALL_T = 0.25 * IN  #  12.7 mm — all wall / panel thickness
+SIDE_H = 3.0 * IN  #  76.2 mm — interior clear height
 
 # ── End portals ───────────────────────────────────────────────────
-PORTAL_H      = 7.0  * IN   # 177.8 mm — end facade total height
+PORTAL_H = 7.0 * IN  # 177.8 mm — end facade total height
 
 # ── Train arch opening (each end portal) ──────────────────────────
 #    Must clear HO trains — typical max ~40 mm wide × 50 mm tall
-ARCH_W        = 3.5  * IN   #  88.9 mm — opening width
-ARCH_SPRING_H = 2.5  * IN   #  63.5 mm — rectangular height below spring line
-ARCH_R        = ARCH_W / 2  #  44.45 mm — semicircle radius
+ARCH_W = 3.5 * IN  #  88.9 mm — opening width
+ARCH_SPRING_H = 2.5 * IN  #  63.5 mm — rectangular height below spring line
+ARCH_R = ARCH_W / 2  #  44.45 mm — semicircle radius
 
 # ── Decorative arch window (upper portal section) ─────────────────
-DECO_W        = 2.5  * IN   #  63.5 mm
-DECO_SPRING_H = 0.5  * IN   #  12.7 mm
-DECO_R        = DECO_W / 2  #  31.75 mm
+DECO_W = 2.5 * IN  #  63.5 mm
+DECO_SPRING_H = 0.5 * IN  #  12.7 mm
+DECO_R = DECO_W / 2  #  31.75 mm
 
 # ── Side wall windows (3 per side: 2" / 1.5" / 2") ───────────────
-SIDE_WIN_WIDTHS  = [2.0 * IN, 1.5 * IN, 2.0 * IN]
-SIDE_WIN_H       = 1.0 * IN   #  25.4 mm — window height
-SIDE_WIN_Z_BOT   = 0.5 * IN   #  12.7 mm — window bottom above INTERIOR floor
+SIDE_WIN_WIDTHS = [2.0 * IN, 1.5 * IN, 2.0 * IN]
+SIDE_WIN_H = 1.0 * IN  #  25.4 mm — window height
+SIDE_WIN_Z_BOT = 0.5 * IN  #  12.7 mm — window bottom above INTERIOR floor
 
 # ── Floor panel screw holes ────────────────────────────────────────
 # Countersink opens on the exterior (bottom) face of the floor panel (Z = 0).
 # Screw head sits flush with the exterior floor.  Adjust to your fastener.
-FLOOR_SHANK_D    = 0.25 * IN  #   6.35 mm — shaft / shank clearance diameter
-FLOOR_CSK_D      = 0.5  * IN  #  12.7  mm — countersink outer diameter at surface
-FLOOR_CSK_DEPTH  = 3.5         # mm       — countersink depth
+FLOOR_SHANK_D = 0.25 * IN  #   6.35 mm — shaft / shank clearance diameter
+FLOOR_CSK_D = 0.5 * IN  #  12.7  mm — countersink outer diameter at surface
+FLOOR_CSK_DEPTH = 3.5  # mm       — countersink depth
 # 4 hole positions (X, Y) — symmetric about centre, one near each corner
-FLOOR_SCREW_POS  = [
-    (-1.5 * IN,  3.5 * IN),
-    ( 1.5 * IN,  3.5 * IN),
+FLOOR_SCREW_POS = [
+    (-1.5 * IN, 3.5 * IN),
+    (1.5 * IN, 3.5 * IN),
     (-1.5 * IN, -3.5 * IN),
-    ( 1.5 * IN, -3.5 * IN),
+    (1.5 * IN, -3.5 * IN),
 ]
 
 # ── Mounting brackets ──────────────────────────────────────────────
 # L-shaped brackets: vertical part flush with side wall, horizontal extension at top
-# extending inward.  Screw holes on the TOP face of horizontal extension.
-BRKT_HEIGHT    = 1.0  * IN   #  25.4 mm — vertical height above ceiling
-BRKT_LEN       = 2.0  * IN   #  50.8 mm — bracket length along Y (tunnel axis)
-BRKT_HORIZ_EXT = 2.0  * IN   #  50.8 mm — horizontal extension inward from wall
-BRKT_SHANK_D   = 0.18 * IN   #   4.57 mm — bracket screw shank diameter
-BRKT_CSK_D     = 0.35 * IN   #   8.89 mm — bracket countersink outer diameter
-BRKT_CSK_DEPTH = 2.0          # mm       — bracket countersink depth
-BRKT_SCREW_N   = 3            # screw holes per bracket
+# extending inward.  Screw holes on the BOTTOM face of horizontal extension.
+BRKT_HEIGHT = 1.0 * IN  #  25.4 mm — vertical height above ceiling
+BRKT_LEN = 2.0 * IN  #  50.8 mm — bracket length along Y (tunnel axis)
+BRKT_HORIZ_EXT = -2.0 * IN  #  50.8 mm — horizontal extension inward from wall
+BRKT_SHANK_D = 0.18 * IN  #   4.57 mm — bracket screw shank diameter
+BRKT_CSK_D = 0.35 * IN  #   8.89 mm — bracket countersink outer diameter
+BRKT_CSK_DEPTH = 2.0  # mm       — bracket countersink depth
+BRKT_SCREW_N = 3  # screw holes per bracket
+# Hole positioning controls:
+#   BRKT_HOLE_END_MARGIN: distance from front/back edges to first/last hole (along Y)
+#   BRKT_HOLE_X_OFFSET: shift holes along X (+ = toward tunnel center, - = toward wall)
+BRKT_HOLE_END_MARGIN = 0.25 * IN  #   6.35 mm — margin from each end (front/back) along Y
+BRKT_HOLE_X_OFFSET = 0.0  # mm — offset from center of horizontal extension (±X)
 
 # ── Mesh quality ──────────────────────────────────────────────────
-ARCH_SEGS  = 32
-HOLE_SEGS  = 32
-BOOL_EXTRA = 2.0   # mm — cutter overshoot for clean boolean results
+ARCH_SEGS = 32
+HOLE_SEGS = 32
+BOOL_EXTRA = 2.0  # mm — cutter overshoot for clean boolean results
 
 # ── Derived constants ─────────────────────────────────────────────
-TOTAL_H   = WALL_T + SIDE_H + WALL_T  # Z = 0 (floor ext) → TOTAL_H (ceiling ext)
-INNER_LEN = TUNNEL_LEN - 2 * WALL_T   # Y clear span between portal inner faces
-INNER_W   = TUNNEL_W   - 2 * WALL_T   # X interior clear width
+TOTAL_H = WALL_T + SIDE_H + WALL_T  # Z = 0 (floor ext) → TOTAL_H (ceiling ext)
+INNER_LEN = TUNNEL_LEN - 2 * WALL_T  # Y clear span between portal inner faces
+INNER_W = TUNNEL_W - 2 * WALL_T  # X interior clear width
 
 
 # ════════════════════════════════════════════════════════════════
 #  HELPERS
 # ════════════════════════════════════════════════════════════════
+
 
 def clear_scene():
     bpy.ops.object.select_all(action="SELECT")
@@ -167,8 +173,13 @@ def make_cone_cutter(name, cx, cy, cz, r_bot, r_top, height, segs=HOLE_SEGS):
     """
     bm = bmesh.new()
     ret = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False,
-        segments=segs, radius1=r_bot, radius2=r_top, depth=height,
+        bm,
+        cap_ends=True,
+        cap_tris=False,
+        segments=segs,
+        radius1=r_bot,
+        radius2=r_top,
+        depth=height,
     )
     bmesh.ops.translate(bm, verts=ret["verts"], vec=(cx, cy, cz))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -180,8 +191,7 @@ def make_cone_cutter(name, cx, cy, cz, r_bot, r_top, height, segs=HOLE_SEGS):
     return obj
 
 
-def cut_csunk_down(target, name, cx, cy, top_z, depth,
-                   shank_d, csk_d, csk_depth):
+def cut_csunk_down(target, name, cx, cy, top_z, depth, shank_d, csk_d, csk_depth):
     """
     Cut a countersunk hole going DOWN from top_z through 'depth' mm of material.
     The countersink widens at the top face (top_z) — screw head recessed there.
@@ -193,28 +203,37 @@ def cut_csunk_down(target, name, cx, cy, top_z, depth,
     slope = (csk_d / 2 - shank_d / 2) / csk_depth
 
     # Pass 1: shank (straight, full depth + overshoot both ends)
-    shank_h  = depth + 2 * BOOL_EXTRA
+    shank_h = depth + 2 * BOOL_EXTRA
     shank_cz = top_z - depth / 2
     shank = make_cone_cutter(
-        f"{name}_shank", cx, cy, shank_cz,
-        shank_d / 2, shank_d / 2, shank_h,
+        f"{name}_shank",
+        cx,
+        cy,
+        shank_cz,
+        shank_d / 2,
+        shank_d / 2,
+        shank_h,
     )
     bool_diff(target, shank)
 
     # Pass 2: countersink frustum (wide at top, narrow at depth)
-    csk_h   = csk_depth + BOOL_EXTRA
-    csk_cz  = top_z - csk_depth / 2
-    r_top_v = csk_d / 2 + slope * (BOOL_EXTRA / 2)          # slightly wider above surface
+    csk_h = csk_depth + BOOL_EXTRA
+    csk_cz = top_z - csk_depth / 2
+    r_top_v = csk_d / 2 + slope * (BOOL_EXTRA / 2)  # slightly wider above surface
     r_bot_v = max(shank_d / 2 - slope * (BOOL_EXTRA / 2), 0.01)
     csk = make_cone_cutter(
-        f"{name}_csk", cx, cy, csk_cz,
-        r_bot_v, r_top_v, csk_h,
+        f"{name}_csk",
+        cx,
+        cy,
+        csk_cz,
+        r_bot_v,
+        r_top_v,
+        csk_h,
     )
     bool_diff(target, csk)
 
 
-def cut_csunk_up(target, name, cx, cy, bottom_z, depth,
-                 shank_d, csk_d, csk_depth):
+def cut_csunk_up(target, name, cx, cy, bottom_z, depth, shank_d, csk_d, csk_depth):
     """
     Cut a countersunk hole going UP from bottom_z through 'depth' mm of material.
     The countersink widens at the bottom face (bottom_z) — screw head recessed there.
@@ -226,22 +245,32 @@ def cut_csunk_up(target, name, cx, cy, bottom_z, depth,
     slope = (csk_d / 2 - shank_d / 2) / csk_depth
 
     # Pass 1: shank (straight, full depth + overshoot both ends)
-    shank_h  = depth + 2 * BOOL_EXTRA
+    shank_h = depth + 2 * BOOL_EXTRA
     shank_cz = bottom_z + depth / 2
     shank = make_cone_cutter(
-        f"{name}_shank", cx, cy, shank_cz,
-        shank_d / 2, shank_d / 2, shank_h,
+        f"{name}_shank",
+        cx,
+        cy,
+        shank_cz,
+        shank_d / 2,
+        shank_d / 2,
+        shank_h,
     )
     bool_diff(target, shank)
 
     # Pass 2: countersink frustum (wide at bottom, narrow at depth)
-    csk_h   = csk_depth + BOOL_EXTRA
-    csk_cz  = bottom_z + csk_depth / 2
-    r_bot_v = csk_d / 2 + slope * (BOOL_EXTRA / 2)          # wide at bottom
+    csk_h = csk_depth + BOOL_EXTRA
+    csk_cz = bottom_z + csk_depth / 2
+    r_bot_v = csk_d / 2 + slope * (BOOL_EXTRA / 2)  # wide at bottom
     r_top_v = max(shank_d / 2 - slope * (BOOL_EXTRA / 2), 0.01)  # narrow at top
     csk = make_cone_cutter(
-        f"{name}_csk", cx, cy, csk_cz,
-        r_bot_v, r_top_v, csk_h,
+        f"{name}_csk",
+        cx,
+        cy,
+        csk_cz,
+        r_bot_v,
+        r_top_v,
+        csk_h,
     )
     bool_diff(target, csk)
 
@@ -261,7 +290,7 @@ def make_arch_cutter(name, w, spring_h, r, depth, segs=ARCH_SEGS):
 
     y0, y1 = -depth / 2, depth / 2
     front = [bm.verts.new((x, y0, z)) for x, z in pts]
-    back  = [bm.verts.new((x, y1, z)) for x, z in pts]
+    back = [bm.verts.new((x, y1, z)) for x, z in pts]
     bm.verts.ensure_lookup_table()
 
     n = len(pts)
@@ -297,17 +326,23 @@ floor = box("FloorPanel", 0, 0, WALL_T / 2, TUNNEL_W, TUNNEL_LEN, WALL_T)
 link_to(col, floor)
 
 for i, (sx, sy) in enumerate(FLOOR_SCREW_POS):
-    cut_csunk_up(floor, f"FloorHole_{i}", sx, sy,
-                 0, WALL_T,
-                 FLOOR_SHANK_D, FLOOR_CSK_D, FLOOR_CSK_DEPTH)
+    cut_csunk_up(
+        floor,
+        f"FloorHole_{i}",
+        sx,
+        sy,
+        0,
+        WALL_T,
+        FLOOR_SHANK_D,
+        FLOOR_CSK_D,
+        FLOOR_CSK_DEPTH,
+    )
 
 
 # ── 2. CEILING PANEL (solid — no holes) ────────────────────────────
 # Solid slab at Z = TOTAL_H - WALL_T → TOTAL_H.
 
-ceiling = box("CeilingPanel",
-              0, 0, TOTAL_H - WALL_T / 2,
-              TUNNEL_W, TUNNEL_LEN, WALL_T)
+ceiling = box("CeilingPanel", 0, 0, TOTAL_H - WALL_T / 2, TUNNEL_W, TUNNEL_LEN, WALL_T)
 link_to(col, ceiling)
 
 
@@ -316,13 +351,15 @@ link_to(col, ceiling)
 # Three rectangular windows with bottoms 0.5" above the interior floor.
 
 total_win_w = sum(SIDE_WIN_WIDTHS)
-gap = (INNER_LEN - total_win_w) / 4.0   # 4 equal gaps (edges + between windows)
+gap = (INNER_LEN - total_win_w) / 4.0  # 4 equal gaps (edges + between windows)
 
-for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
-                        ("Right",   TUNNEL_W / 2 - WALL_T / 2)]:
-    wall = box(f"SideWall_{side_label}",
-               wx, 0, TOTAL_H / 2,
-               WALL_T, TUNNEL_LEN, TOTAL_H)
+for side_label, wx in [
+    ("Left", -(TUNNEL_W / 2 - WALL_T / 2)),
+    ("Right", TUNNEL_W / 2 - WALL_T / 2),
+]:
+    wall = box(
+        f"SideWall_{side_label}", wx, 0, TOTAL_H / 2, WALL_T, TUNNEL_LEN, TOTAL_H
+    )
     link_to(col, wall)
 
     y_cursor = -INNER_LEN / 2 + gap
@@ -330,9 +367,9 @@ for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
         win_cy = y_cursor + ww / 2
         # Z measured from exterior floor; interior floor is at WALL_T
         win_cz = WALL_T + SIDE_WIN_Z_BOT + SIDE_WIN_H / 2
-        cutter = box(f"Win_{side_label}_{wi}",
-                     wx, win_cy, win_cz,
-                     WALL_T * 3, ww, SIDE_WIN_H)
+        cutter = box(
+            f"Win_{side_label}_{wi}", wx, win_cy, win_cz, WALL_T * 3, ww, SIDE_WIN_H
+        )
         bool_diff(wall, cutter)
         y_cursor += ww + gap
 
@@ -341,26 +378,26 @@ for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
 # 7" tall decorative facades. Train arch base at Z = 0 (exterior floor).
 # Deco arch window sits above the tunnel ceiling level.
 
-DECO_Z_BASE = TOTAL_H + 0.75 * IN   # base of deco arch; verify < PORTAL_H
+DECO_Z_BASE = TOTAL_H + 0.75 * IN  # base of deco arch; verify < PORTAL_H
 
-for end_label, py in [("Front",  TUNNEL_LEN / 2 - WALL_T / 2),
-                       ("Back",  -(TUNNEL_LEN / 2 - WALL_T / 2))]:
-    portal = box(f"Portal_{end_label}",
-                 0, py, PORTAL_H / 2,
-                 TUNNEL_W, WALL_T, PORTAL_H)
+for end_label, py in [
+    ("Front", TUNNEL_LEN / 2 - WALL_T / 2),
+    ("Back", -(TUNNEL_LEN / 2 - WALL_T / 2)),
+]:
+    portal = box(f"Portal_{end_label}", 0, py, PORTAL_H / 2, TUNNEL_W, WALL_T, PORTAL_H)
     link_to(col, portal)
 
     # Train arch opening (base at Z = 0)
-    train_arch = make_arch_cutter(f"TrainArch_{end_label}",
-                                   ARCH_W, ARCH_SPRING_H, ARCH_R,
-                                   WALL_T * 3)
+    train_arch = make_arch_cutter(
+        f"TrainArch_{end_label}", ARCH_W, ARCH_SPRING_H, ARCH_R, WALL_T * 3
+    )
     train_arch.location = (0, py, 0)
     bool_diff(portal, train_arch)
 
     # Decorative arch window (above tunnel ceiling)
-    deco_arch = make_arch_cutter(f"DecoArch_{end_label}",
-                                  DECO_W, DECO_SPRING_H, DECO_R,
-                                  WALL_T * 3)
+    deco_arch = make_arch_cutter(
+        f"DecoArch_{end_label}", DECO_W, DECO_SPRING_H, DECO_R, WALL_T * 3
+    )
     deco_arch.location = (0, py, DECO_Z_BASE)
     bool_diff(portal, deco_arch)
 
@@ -374,18 +411,26 @@ for end_label, py in [("Front",  TUNNEL_LEN / 2 - WALL_T / 2),
 # • Screw holes on the BOTTOM face of horizontal part, along Y (parallel to tunnel axis)
 # • All holes countersunk (heads recessed into bottom face)
 
-BRKT_TOP_Z = TOTAL_H + BRKT_HEIGHT   # Z of bracket top face
+BRKT_TOP_Z = TOTAL_H + BRKT_HEIGHT  # Z of bracket top face
 
-for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
-                        ("Right",   TUNNEL_W / 2 - WALL_T / 2)]:
-    for end_label, by in [("Front",  TUNNEL_LEN / 2 - BRKT_LEN / 2),
-                            ("Back",  -(TUNNEL_LEN / 2 - BRKT_LEN / 2))]:
-
+for side_label, wx in [
+    ("Left", -(TUNNEL_W / 2 - WALL_T / 2)),
+    ("Right", TUNNEL_W / 2 - WALL_T / 2),
+]:
+    for end_label, by in [
+        ("Front", TUNNEL_LEN / 2 - BRKT_LEN / 2),
+        ("Back", -(TUNNEL_LEN / 2 - BRKT_LEN / 2)),
+    ]:
         # Vertical part: flush with side wall
-        brkt_vert = box(f"BracketVert_{side_label}_{end_label}",
-                        wx, by,
-                        TOTAL_H + BRKT_HEIGHT / 2,
-                        WALL_T, BRKT_LEN, BRKT_HEIGHT)
+        brkt_vert = box(
+            f"BracketVert_{side_label}_{end_label}",
+            wx,
+            by,
+            TOTAL_H + BRKT_HEIGHT / 2,
+            WALL_T,
+            BRKT_LEN,
+            BRKT_HEIGHT,
+        )
 
         # Horizontal part: extends inward from top of vertical part
         # For left wall: extends toward +X (inward)
@@ -399,10 +444,15 @@ for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
             # Center of horizontal extension: wx - WALL_T/2 - BRKT_HORIZ_EXT/2
             horiz_cx = wx - WALL_T / 2 - BRKT_HORIZ_EXT / 2
 
-        brkt_horiz = box(f"BracketHoriz_{side_label}_{end_label}",
-                         horiz_cx, by,
-                         TOTAL_H + BRKT_HEIGHT - WALL_T / 2,
-                         BRKT_HORIZ_EXT, BRKT_LEN, WALL_T)
+        brkt_horiz = box(
+            f"BracketHoriz_{side_label}_{end_label}",
+            horiz_cx,
+            by,
+            TOTAL_H + BRKT_HEIGHT - WALL_T / 2,
+            BRKT_HORIZ_EXT,
+            BRKT_LEN,
+            WALL_T,
+        )
 
         # Union vertical and horizontal parts into L-shape
         bool_union(brkt_vert, brkt_horiz)
@@ -412,11 +462,34 @@ for side_label, wx in [("Left",  -(TUNNEL_W / 2 - WALL_T / 2)),
 
         # BRKT_SCREW_N countersunk holes along Y on the bottom face of horizontal part
         horiz_bottom_z = TOTAL_H + BRKT_HEIGHT - WALL_T
+        # Apply X offset: positive = toward center for both left and right sides
+        if side_label == "Left":
+            hole_x = horiz_cx + BRKT_HOLE_X_OFFSET  # left: +X = toward center
+        else:  # Right
+            hole_x = horiz_cx - BRKT_HOLE_X_OFFSET  # right: -X = toward center
+
+        # Calculate Y positions with end margins
+        available_len = BRKT_LEN - 2 * BRKT_HOLE_END_MARGIN
         for hi in range(BRKT_SCREW_N):
-            hy = by - BRKT_LEN / 2 + (hi + 1) * BRKT_LEN / (BRKT_SCREW_N + 1)
-            cut_csunk_up(brkt, f"BrktHole_{side_label}_{end_label}_{hi}",
-                         horiz_cx, hy, horiz_bottom_z, WALL_T,
-                         BRKT_SHANK_D, BRKT_CSK_D, BRKT_CSK_DEPTH)
+            if BRKT_SCREW_N == 1:
+                # Single hole: centered
+                hy = by
+            else:
+                # Multiple holes: evenly spaced between margins
+                spacing = available_len / (BRKT_SCREW_N - 1)
+                hy = by - BRKT_LEN / 2 + BRKT_HOLE_END_MARGIN + hi * spacing
+
+            cut_csunk_up(
+                brkt,
+                f"BrktHole_{side_label}_{end_label}_{hi}",
+                hole_x,
+                hy,
+                horiz_bottom_z,
+                WALL_T,
+                BRKT_SHANK_D,
+                BRKT_CSK_D,
+                BRKT_CSK_DEPTH,
+            )
 
 
 # ════════════════════════════════════════════════════════════════
@@ -439,16 +512,24 @@ for obj in col.objects:
 print("=" * 62)
 print("  HO Tunnel — build complete (v2)")
 print("=" * 62)
-print(f"  Tunnel length         : {TUNNEL_LEN:.1f} mm  ({TUNNEL_LEN/IN:.2f}\")")
-print(f"  Tunnel width          : {TUNNEL_W:.1f} mm  ({TUNNEL_W/IN:.2f}\")")
-print(f"  Interior clear height : {SIDE_H:.1f} mm  ({SIDE_H/IN:.2f}\")")
-print(f"  Total exterior height : {TOTAL_H:.1f} mm  ({TOTAL_H/IN:.2f}\")")
-print(f"  Portal height         : {PORTAL_H:.1f} mm  ({PORTAL_H/IN:.2f}\")")
-print(f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall")
-print(f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
-      f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}")
-print(f"  L-bracket dimensions  : {BRKT_HEIGHT:.1f} mm high × {BRKT_HORIZ_EXT:.1f} mm extension  "
-      f"({BRKT_HEIGHT/IN:.2f}\" × {BRKT_HORIZ_EXT/IN:.2f}\")")
-print(f"  Bracket screw holes   : Ø{BRKT_SHANK_D:.2f} mm × {BRKT_SCREW_N} per bracket × 4 brackets")
+print(f'  Tunnel length         : {TUNNEL_LEN:.1f} mm  ({TUNNEL_LEN / IN:.2f}")')
+print(f'  Tunnel width          : {TUNNEL_W:.1f} mm  ({TUNNEL_W / IN:.2f}")')
+print(f'  Interior clear height : {SIDE_H:.1f} mm  ({SIDE_H / IN:.2f}")')
+print(f'  Total exterior height : {TOTAL_H:.1f} mm  ({TOTAL_H / IN:.2f}")')
+print(f'  Portal height         : {PORTAL_H:.1f} mm  ({PORTAL_H / IN:.2f}")')
+print(
+    f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall"
+)
+print(
+    f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
+    f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}"
+)
+print(
+    f"  L-bracket dimensions  : {BRKT_HEIGHT:.1f} mm high × {BRKT_HORIZ_EXT:.1f} mm extension  "
+    f'({BRKT_HEIGHT / IN:.2f}" × {BRKT_HORIZ_EXT / IN:.2f}")'
+)
+print(
+    f"  Bracket screw holes   : Ø{BRKT_SHANK_D:.2f} mm × {BRKT_SCREW_N} per bracket × 4 brackets"
+)
 print(f"  Output dir            : {output_dir}")
 print("=" * 62)
