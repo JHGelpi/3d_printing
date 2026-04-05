@@ -119,26 +119,29 @@ bracket.select_set(True)
 
 # ============================================================
 # 2. Bevel all edges EXCEPT the bottom face
-#    Use per-edge bevel weights: 0 = no bevel, 1 = full bevel
+#    Uses bmesh.ops.bevel directly — no modifier, no version-specific
+#    layer APIs (avoids the bevel_weight removal in Blender 4.0+).
 # ============================================================
 bm_bevel = bmesh.new()
 bm_bevel.from_mesh(bracket.data)
-weight_layer = bm_bevel.edges.layers.bevel_weight.verify()
-for edge in bm_bevel.edges:
-    # Bottom face edges have both vertices sitting at Z ≈ 0
-    if all(abs(v.co.z) < 0.001 for v in edge.verts):
-        edge[weight_layer] = 0.0   # flat — no bevel
-    else:
-        edge[weight_layer] = 1.0   # all other edges get chamfered
+
+# Include every edge whose vertices are NOT all at Z ≈ 0 (bottom face)
+edges_to_bevel = [
+    e for e in bm_bevel.edges
+    if not all(abs(v.co.z) < 0.001 for v in e.verts)
+]
+
+bmesh.ops.bevel(
+    bm_bevel,
+    geom=edges_to_bevel,
+    offset=BEVEL_AMOUNT,
+    segments=BEVEL_SEGMENTS,
+    profile=0.5,
+    affect='EDGES',
+)
+
 bm_bevel.to_mesh(bracket.data)
 bm_bevel.free()
-
-bevel = bracket.modifiers.new("Bevel", 'BEVEL')
-bevel.width             = BEVEL_AMOUNT
-bevel.segments          = BEVEL_SEGMENTS
-bevel.limit_method      = 'WEIGHT'   # respect per-edge weights set above
-bevel.use_clamp_overlap = True
-bpy.ops.object.modifier_apply(modifier=bevel.name)
 
 
 # ============================================================
