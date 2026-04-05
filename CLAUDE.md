@@ -4,6 +4,10 @@
 
 This project uses **Python** and **Blender's Python API (bpy)** to programmatically generate 3D models. Models are exported for slicing and printing on a **Bambu P2S** 3D printer.
 
+## Code Merges
+
+All code changes should come with a precise and accurate summary for github code commit comments.
+
 ## Tech Stack
 
 - **Python** — scripting and model generation logic
