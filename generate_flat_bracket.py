@@ -118,13 +118,25 @@ bpy.context.view_layer.objects.active = bracket
 bracket.select_set(True)
 
 # ============================================================
-# 2. Bevel all edges
+# 2. Bevel all edges EXCEPT the bottom face
+#    Use per-edge bevel weights: 0 = no bevel, 1 = full bevel
 # ============================================================
+bm_bevel = bmesh.new()
+bm_bevel.from_mesh(bracket.data)
+weight_layer = bm_bevel.edges.layers.bevel_weight.verify()
+for edge in bm_bevel.edges:
+    # Bottom face edges have both vertices sitting at Z ≈ 0
+    if all(abs(v.co.z) < 0.001 for v in edge.verts):
+        edge[weight_layer] = 0.0   # flat — no bevel
+    else:
+        edge[weight_layer] = 1.0   # all other edges get chamfered
+bm_bevel.to_mesh(bracket.data)
+bm_bevel.free()
+
 bevel = bracket.modifiers.new("Bevel", 'BEVEL')
-bevel.width          = BEVEL_AMOUNT
-bevel.segments       = BEVEL_SEGMENTS
-bevel.limit_method   = 'ANGLE'
-bevel.angle_limit    = math.radians(85)   # chamfer all ~90° edges
+bevel.width             = BEVEL_AMOUNT
+bevel.segments          = BEVEL_SEGMENTS
+bevel.limit_method      = 'WEIGHT'   # respect per-edge weights set above
 bevel.use_clamp_overlap = True
 bpy.ops.object.modifier_apply(modifier=bevel.name)
 
@@ -144,7 +156,7 @@ def make_countersink_cutter(name, hx, hy):
 
     # --- shank cylinder (full height + overshoot) ---
     r_shank = HOLE_DIAMETER / 2
-    bmesh.ops.create_cone(
+    shank = bmesh.ops.create_cone(
         bm2,
         cap_ends=True, cap_tris=False,
         segments=HOLE_SEGMENTS,
@@ -152,29 +164,24 @@ def make_countersink_cutter(name, hx, hy):
         radius2=r_shank,
         depth=BRACKET_THICK + extra * 2,
     )
-    # create_cone centres at origin; shift so bottom is at -extra
-    bmesh.ops.translate(bm2, verts=bm2.verts,
+    # Translate ONLY the shank verts; create_cone centres at origin
+    bmesh.ops.translate(bm2, verts=shank['verts'],
                         vec=(hx, hy, BRACKET_THICK / 2))
 
     # --- countersink cone (top of bracket, pointing upward) ---
-    # From top surface downward: top radius = CSNK_DIAMETER/2, bottom = HOLE_DIAMETER/2
-    r_top    = CSNK_DIAMETER / 2
-    r_bottom = HOLE_DIAMETER / 2
+    # Top radius = CSNK_DIAMETER/2, bottom radius = HOLE_DIAMETER/2
+    r_top        = CSNK_DIAMETER / 2
     csk_centre_z = BRACKET_THICK - CSNK_DEPTH / 2
-    bmesh.ops.create_cone(
+    csk = bmesh.ops.create_cone(
         bm2,
         cap_ends=True, cap_tris=False,
         segments=HOLE_SEGMENTS,
-        radius1=r_bottom,   # bottom of cone
-        radius2=r_top,      # top of cone (wider)
+        radius1=HOLE_DIAMETER / 2,   # bottom of cone (narrow)
+        radius2=r_top,               # top of cone (wide)
         depth=CSNK_DEPTH + extra,
     )
-    # Shift cone into position at top of bracket
-    # create_cone centres at 0; we want it at (hx, hy, csk_centre_z + extra/2)
-    csk_verts = [v for v in bm2.verts
-                 if abs(v.co.z) < (CSNK_DEPTH / 2 + extra + 0.1)
-                 and v.co.x == 0 and v.co.y == 0]
-    bmesh.ops.translate(bm2, verts=bm2.verts,
+    # Translate ONLY the cone verts — shank verts are already in place
+    bmesh.ops.translate(bm2, verts=csk['verts'],
                         vec=(hx, hy, csk_centre_z + extra / 2))
 
     bmesh.ops.recalc_face_normals(bm2, faces=bm2.faces)
