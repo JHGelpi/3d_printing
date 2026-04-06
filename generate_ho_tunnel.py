@@ -83,7 +83,13 @@ FLOOR_SCREW_POS = [
 # ── Mounting brackets ──────────────────────────────────────────────
 # L-shaped brackets: vertical part flush with side wall, horizontal extension at top
 # extending inward.  Screw holes on the BOTTOM face of horizontal extension.
-BRKT_HEIGHT = 7.0 * IN  #  25.4 mm — vertical height above ceiling
+# Heights can be set independently for each of the 4 brackets:
+BRKT_HEIGHTS = {
+    ("Left", "Front"): 7.0 * IN,  # 177.8 mm — Left-Front bracket height
+    ("Left", "Back"): 7.0 * IN,  # 177.8 mm — Left-Back bracket height
+    ("Right", "Front"): 7.0 * IN,  # 177.8 mm — Right-Front bracket height
+    ("Right", "Back"): 7.0 * IN,  # 177.8 mm — Right-Back bracket height
+}
 BRKT_LEN = 2.0 * IN  #  50.8 mm — bracket length along Y (tunnel axis)
 BRKT_HORIZ_EXT = -2.0 * IN  #  50.8 mm — horizontal extension inward from wall
 BRKT_SHANK_D = 0.18 * IN  #   4.57 mm — bracket screw shank diameter
@@ -411,8 +417,6 @@ for end_label, py in [
 # • Screw holes on the BOTTOM face of horizontal part, along Y (parallel to tunnel axis)
 # • All holes countersunk (heads recessed into bottom face)
 
-BRKT_TOP_Z = TOTAL_H + BRKT_HEIGHT  # Z of bracket top face
-
 for side_label, wx in [
     ("Left", -(TUNNEL_W / 2 - WALL_T / 2)),
     ("Right", TUNNEL_W / 2 - WALL_T / 2),
@@ -421,15 +425,18 @@ for side_label, wx in [
         ("Front", TUNNEL_LEN / 2 - BRKT_LEN / 2),
         ("Back", -(TUNNEL_LEN / 2 - BRKT_LEN / 2)),
     ]:
+        # Get the height for this specific bracket
+        brkt_height = BRKT_HEIGHTS[(side_label, end_label)]
+
         # Vertical part: flush with side wall
         brkt_vert = box(
             f"BracketVert_{side_label}_{end_label}",
             wx,
             by,
-            TOTAL_H + BRKT_HEIGHT / 2,
+            TOTAL_H + brkt_height / 2,
             WALL_T,
             BRKT_LEN,
-            BRKT_HEIGHT,
+            brkt_height,
         )
 
         # Horizontal part: extends inward from top of vertical part
@@ -448,7 +455,7 @@ for side_label, wx in [
             f"BracketHoriz_{side_label}_{end_label}",
             horiz_cx,
             by,
-            TOTAL_H + BRKT_HEIGHT - WALL_T / 2,
+            TOTAL_H + brkt_height - WALL_T / 2,
             BRKT_HORIZ_EXT,
             BRKT_LEN,
             WALL_T,
@@ -461,7 +468,7 @@ for side_label, wx in [
         link_to(col, brkt)
 
         # BRKT_SCREW_N countersunk holes along Y on the bottom face of horizontal part
-        horiz_bottom_z = TOTAL_H + BRKT_HEIGHT - WALL_T
+        horiz_bottom_z = TOTAL_H + brkt_height - WALL_T
         # Apply X offset: positive = toward center for both left and right sides
         if side_label == "Left":
             hole_x = horiz_cx + BRKT_HOLE_X_OFFSET  # left: +X = toward center
@@ -497,6 +504,9 @@ for side_label, wx in [
 # ════════════════════════════════════════════════════════════════
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+# If running from within a .blend file, use the parent directory
+if script_dir.endswith(".blend"):
+    script_dir = os.path.dirname(script_dir)
 output_dir = os.path.join(script_dir, "output")
 os.makedirs(output_dir, exist_ok=True)
 
@@ -524,9 +534,11 @@ print(
     f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
     f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}"
 )
+print(f"  Bracket heights:")
+for (side, end), height in BRKT_HEIGHTS.items():
+    print(f'    {side:5s}-{end:5s}: {height:.1f} mm  ({height / IN:.2f}")')
 print(
-    f"  L-bracket dimensions  : {BRKT_HEIGHT:.1f} mm high × {BRKT_HORIZ_EXT:.1f} mm extension  "
-    f'({BRKT_HEIGHT / IN:.2f}" × {BRKT_HORIZ_EXT / IN:.2f}")'
+    f'  Bracket extension     : {abs(BRKT_HORIZ_EXT):.1f} mm  ({abs(BRKT_HORIZ_EXT) / IN:.2f}")'
 )
 print(
     f"  Bracket screw holes   : Ø{BRKT_SHANK_D:.2f} mm × {BRKT_SCREW_N} per bracket × 4 brackets"
