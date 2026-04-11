@@ -36,48 +36,46 @@ import bmesh
 import bpy
 
 # ════════════════════════════════════════════════════════════════
-#  PARAMETERS  —  edit these; all dimensions in mm unless noted
+#  PARAMETERS  —  all dimensions in mm
 # ════════════════════════════════════════════════════════════════
 
-IN = 25.4  # mm per inch
-
 # ── Tunnel shell ──────────────────────────────────────────────────
-TUNNEL_LEN = 9.5 * IN  # 241.3 mm — outer length along Y (track axis)
-TUNNEL_W = 6.0 * IN  # 152.4 mm — outer width along X
-WALL_T = 0.25 * IN  #  12.7 mm — all wall / panel thickness
-SIDE_H = 3.0 * IN  #  76.2 mm — interior clear height
+TUNNEL_LEN = 241.3  # mm (9.5") — outer length along Y (track axis)
+TUNNEL_W = 152.4  # mm (6.0") — outer width along X
+WALL_T = 12.7  # mm (0.25") — all wall / panel thickness
+SIDE_H = 76.2  # mm (3.0") — interior clear height
 
 # ── End portals ───────────────────────────────────────────────────
-PORTAL_H = 7.0 * IN  # 177.8 mm — end facade total height
+PORTAL_H = 177.8  # mm (7.0") — end facade total height
 
 # ── Train arch opening (each end portal) ──────────────────────────
 #    Must clear HO trains — typical max ~40 mm wide × 50 mm tall
-ARCH_W = 3.5 * IN  #  88.9 mm — opening width
-ARCH_SPRING_H = 2.5 * IN  #  63.5 mm — rectangular height below spring line
-ARCH_R = ARCH_W / 2  #  44.45 mm — semicircle radius
+ARCH_W = 88.9  # mm (3.5") — opening width
+ARCH_SPRING_H = 63.5  # mm (2.5") — rectangular height below spring line
+ARCH_R = ARCH_W / 2  # mm — semicircle radius
 
 # ── Decorative arch window (upper portal section) ─────────────────
-DECO_W = 2.5 * IN  #  63.5 mm
-DECO_SPRING_H = 0.5 * IN  #  12.7 mm
-DECO_R = DECO_W / 2  #  31.75 mm
+DECO_W = 63.5  # mm (2.5")
+DECO_SPRING_H = 12.7  # mm (0.5")
+DECO_R = DECO_W / 2  # mm
 
-# ── Side wall windows (3 per side: 2" / 1.5" / 2") ───────────────
-SIDE_WIN_WIDTHS = [2.0 * IN, 1.5 * IN, 2.0 * IN]
-SIDE_WIN_H = 1.0 * IN  #  25.4 mm — window height
-SIDE_WIN_Z_BOT = 0.5 * IN  #  12.7 mm — window bottom above INTERIOR floor
+# ── Side wall windows (3 per side) ────────────────────────────────
+SIDE_WIN_WIDTHS = [50.8, 38.1, 50.8]  # mm (2.0", 1.5", 2.0")
+SIDE_WIN_H = 25.4  # mm (1.0") — window height
+SIDE_WIN_Z_BOT = 12.7  # mm (0.5") — window bottom above INTERIOR floor
 
 # ── Floor panel screw holes ────────────────────────────────────────
 # Countersink opens on the exterior (bottom) face of the floor panel (Z = 0).
 # Screw head sits flush with the exterior floor.  Adjust to your fastener.
-FLOOR_SHANK_D = 0.25 * IN  #   6.35 mm — shaft / shank clearance diameter
-FLOOR_CSK_D = 0.5 * IN  #  12.7  mm — countersink outer diameter at surface
-FLOOR_CSK_DEPTH = 3.5  # mm       — countersink depth
+FLOOR_SHANK_D = 6.35  # mm (0.25") — shaft / shank clearance diameter
+FLOOR_CSK_D = 12.7  # mm (0.5") — countersink outer diameter at surface
+FLOOR_CSK_DEPTH = 3.5  # mm — countersink depth
 # 4 hole positions (X, Y) — symmetric about centre, one near each corner
 FLOOR_SCREW_POS = [
-    (-1.5 * IN, 3.5 * IN),
-    (1.5 * IN, 3.5 * IN),
-    (-1.5 * IN, -3.5 * IN),
-    (1.5 * IN, -3.5 * IN),
+    (-38.1, 88.9),  # mm (-1.5", 3.5")
+    (38.1, 88.9),  # mm (1.5", 3.5")
+    (-38.1, -88.9),  # mm (-1.5", -3.5")
+    (38.1, -88.9),  # mm (1.5", -3.5")
 ]
 
 # ── Mounting brackets ──────────────────────────────────────────────
@@ -85,22 +83,29 @@ FLOOR_SCREW_POS = [
 # extending inward.  Screw holes on the BOTTOM face of horizontal extension.
 # Heights can be set independently for each of the 4 brackets:
 BRKT_HEIGHTS = {
-    ("Left", "Front"): 7.0 * IN,  # 177.8 mm — Left-Front bracket height
-    ("Left", "Back"): 7.0 * IN,  # 177.8 mm — Left-Back bracket height
-    ("Right", "Front"): 7.0 * IN,  # 177.8 mm — Right-Front bracket height
-    ("Right", "Back"): 7.0 * IN,  # 177.8 mm — Right-Back bracket height
+    ("Left", "Front"): 177.8,  # mm (7.0") — Left-Front bracket height
+    ("Left", "Back"): 177.8,  # mm (7.0") — Left-Back bracket height
+    ("Right", "Front"): 177.8,  # mm (7.0") — Right-Front bracket height
+    ("Right", "Back"): 177.8,  # mm (7.0") — Right-Back bracket height
 }
-BRKT_LEN = 2.0 * IN  #  50.8 mm — bracket length along Y (tunnel axis)
-BRKT_HORIZ_EXT = -2.0 * IN  #  50.8 mm — horizontal extension inward from wall
-BRKT_SHANK_D = 0.18 * IN  #   4.57 mm — bracket screw shank diameter
-BRKT_CSK_D = 0.35 * IN  #   8.89 mm — bracket countersink outer diameter
-BRKT_CSK_DEPTH = 2.0  # mm       — bracket countersink depth
+BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
+BRKT_HORIZ_EXT = -50.8  # mm (2.0") — horizontal extension inward from wall (negative = inward)
+BRKT_SHANK_D = 4.57  # mm (0.18") — bracket screw shank diameter
+BRKT_CSK_D = 8.89  # mm (0.35") — bracket countersink outer diameter
+BRKT_CSK_DEPTH = 2.0  # mm — bracket countersink depth
 BRKT_SCREW_N = 3  # screw holes per bracket
 # Hole positioning controls:
 #   BRKT_HOLE_END_MARGIN: distance from front/back edges to first/last hole (along Y)
 #   BRKT_HOLE_X_OFFSET: shift holes along X (+ = toward tunnel center, - = toward wall)
-BRKT_HOLE_END_MARGIN = 0.3 * IN  #   6.35 mm — margin from each end (front/back) along Y
-BRKT_HOLE_X_OFFSET = -0.25 * IN  # mm — offset from center of horizontal extension (±X)
+BRKT_HOLE_END_MARGIN = 7.62  # mm (0.3") — margin from each end (front/back) along Y
+BRKT_HOLE_X_OFFSET = -6.35  # mm (-0.25") — offset from center of horizontal extension
+
+# ── Pitch configuration ───────────────────────────────────────────
+# Pitch (grade) of floor board as "rise over run" percentage.
+# This tilts the floor panel along the Y-axis (tunnel length).
+# Positive = rising from Back (-Y) to Front (+Y).
+# NOTE: Ceiling brackets remain flat (0 degrees).
+PITCH_PERCENT = 3.0  # percent — 3% = 3 units rise per 100 units run
 
 # ── Mesh quality ──────────────────────────────────────────────────
 ARCH_SEGS = 32
@@ -111,6 +116,9 @@ BOOL_EXTRA = 2.0  # mm — cutter overshoot for clean boolean results
 TOTAL_H = WALL_T + SIDE_H + WALL_T  # Z = 0 (floor ext) → TOTAL_H (ceiling ext)
 INNER_LEN = TUNNEL_LEN - 2 * WALL_T  # Y clear span between portal inner faces
 INNER_W = TUNNEL_W - 2 * WALL_T  # X interior clear width
+PITCH_ANGLE_RAD = math.atan(
+    PITCH_PERCENT / 100.0
+)  # radians — pitch angle for rotations
 
 
 # ════════════════════════════════════════════════════════════════
@@ -327,17 +335,30 @@ bpy.context.scene.collection.children.link(col)
 # ── 1. FLOOR PANEL ────────────────────────────────────────────────
 # Solid slab at Z = 0 → WALL_T.
 # Four countersunk screw holes; heads recessed into the exterior bottom face (Z = 0).
+# Rotated to match floor board pitch.
 
 floor = box("FloorPanel", 0, 0, WALL_T / 2, TUNNEL_W, TUNNEL_LEN, WALL_T)
 link_to(col, floor)
 
+# Rotate floor panel to match floor board pitch (around X-axis to tilt along Y)
+floor.rotation_euler = (PITCH_ANGLE_RAD, 0, 0)
+bpy.context.view_layer.objects.active = floor
+floor.select_set(True)
+bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+floor.select_set(False)
+
 for i, (sx, sy) in enumerate(FLOOR_SCREW_POS):
+    # Adjust Z for pitch: as Y increases (toward +Y/Front), Z increases due to pitch
+    # Floor panel is rotated around its center (0, 0, WALL_T/2)
+    dz_from_pitch = sy * math.tan(PITCH_ANGLE_RAD)
+    floor_bottom_z = 0 + dz_from_pitch
+
     cut_csunk_up(
         floor,
         f"FloorHole_{i}",
         sx,
         sy,
-        0,
+        floor_bottom_z,
         WALL_T,
         FLOOR_SHANK_D,
         FLOOR_CSK_D,
@@ -384,7 +405,7 @@ for side_label, wx in [
 # 7" tall decorative facades. Train arch base at Z = 0 (exterior floor).
 # Deco arch window sits above the tunnel ceiling level.
 
-DECO_Z_BASE = TOTAL_H + 0.75 * IN  # base of deco arch; verify < PORTAL_H
+DECO_Z_BASE = TOTAL_H + 19.05  # mm (0.75") — base of deco arch; verify < PORTAL_H
 
 for end_label, py in [
     ("Front", TUNNEL_LEN / 2 - WALL_T / 2),
@@ -451,6 +472,13 @@ for side_label, wx in [
             # Center of horizontal extension: wx - WALL_T/2 - BRKT_HORIZ_EXT/2
             horiz_cx = wx - WALL_T / 2 - BRKT_HORIZ_EXT / 2
 
+        # Create horizontal bracket at final position (flat, no pitch)
+        # Hole X offset: toward tunnel center for left, away from center for right
+        if side_label == "Left":
+            hole_x_offset = BRKT_HOLE_X_OFFSET  # Toward center
+        else:  # Right
+            hole_x_offset = -BRKT_HOLE_X_OFFSET  # Toward center (from right side)
+
         brkt_horiz = box(
             f"BracketHoriz_{side_label}_{end_label}",
             horiz_cx,
@@ -461,22 +489,10 @@ for side_label, wx in [
             WALL_T,
         )
 
-        # Union vertical and horizontal parts into L-shape
-        bool_union(brkt_vert, brkt_horiz)
-        brkt = brkt_vert
-        brkt.name = f"Bracket_{side_label}_{end_label}"
-        link_to(col, brkt)
-
-        # BRKT_SCREW_N countersunk holes along Y on the bottom face of horizontal part
-        horiz_bottom_z = TOTAL_H + brkt_height - WALL_T
-        # Apply X offset: positive = toward center for both left and right sides
-        if side_label == "Left":
-            hole_x = horiz_cx + BRKT_HOLE_X_OFFSET  # left: +X = toward center
-        else:  # Right
-            hole_x = horiz_cx - BRKT_HOLE_X_OFFSET  # right: -X = toward center
-
-        # Calculate Y positions with end margins
+        # Cut screw holes (bracket is flat - 0 degree pitch)
         available_len = BRKT_LEN - 2 * BRKT_HOLE_END_MARGIN
+        horiz_bottom_z = TOTAL_H + brkt_height - WALL_T
+
         for hi in range(BRKT_SCREW_N):
             if BRKT_SCREW_N == 1:
                 # Single hole: centered
@@ -486,17 +502,29 @@ for side_label, wx in [
                 spacing = available_len / (BRKT_SCREW_N - 1)
                 hy = by - BRKT_LEN / 2 + BRKT_HOLE_END_MARGIN + hi * spacing
 
+            # Hole X position
+            if side_label == "Left":
+                hole_x = horiz_cx + hole_x_offset
+            else:  # Right
+                hole_x = horiz_cx + hole_x_offset  # Already negated above
+
             cut_csunk_up(
-                brkt,
+                brkt_horiz,
                 f"BrktHole_{side_label}_{end_label}_{hi}",
                 hole_x,
                 hy,
-                horiz_bottom_z,
+                horiz_bottom_z,  # Flat surface - same Z for all holes
                 WALL_T,
                 BRKT_SHANK_D,
                 BRKT_CSK_D,
                 BRKT_CSK_DEPTH,
             )
+
+        # Union vertical and horizontal parts into L-shape
+        bool_union(brkt_vert, brkt_horiz)
+        brkt = brkt_vert
+        brkt.name = f"Bracket_{side_label}_{end_label}"
+        link_to(col, brkt)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -522,24 +550,23 @@ for obj in col.objects:
 print("=" * 62)
 print("  HO Tunnel — build complete (v2)")
 print("=" * 62)
-print(f'  Tunnel length         : {TUNNEL_LEN:.1f} mm  ({TUNNEL_LEN / IN:.2f}")')
-print(f'  Tunnel width          : {TUNNEL_W:.1f} mm  ({TUNNEL_W / IN:.2f}")')
-print(f'  Interior clear height : {SIDE_H:.1f} mm  ({SIDE_H / IN:.2f}")')
-print(f'  Total exterior height : {TOTAL_H:.1f} mm  ({TOTAL_H / IN:.2f}")')
-print(f'  Portal height         : {PORTAL_H:.1f} mm  ({PORTAL_H / IN:.2f}")')
+print(f"  Tunnel length         : {TUNNEL_LEN:.1f} mm")
+print(f"  Tunnel width          : {TUNNEL_W:.1f} mm")
+print(f"  Interior clear height : {SIDE_H:.1f} mm")
+print(f"  Total exterior height : {TOTAL_H:.1f} mm")
+print(f"  Portal height         : {PORTAL_H:.1f} mm")
 print(
-    f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall"
+    f"  Pitch (grade)         : {PITCH_PERCENT:.1f}% ({PITCH_ANGLE_RAD * 180 / math.pi:.3f}°)"
 )
+print(f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall")
 print(
     f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
     f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}"
 )
 print(f"  Bracket heights:")
 for (side, end), height in BRKT_HEIGHTS.items():
-    print(f'    {side:5s}-{end:5s}: {height:.1f} mm  ({height / IN:.2f}")')
-print(
-    f'  Bracket extension     : {abs(BRKT_HORIZ_EXT):.1f} mm  ({abs(BRKT_HORIZ_EXT) / IN:.2f}")'
-)
+    print(f"    {side:5s}-{end:5s}: {height:.1f} mm")
+print(f"  Bracket extension     : {abs(BRKT_HORIZ_EXT):.1f} mm")
 print(
     f"  Bracket screw holes   : Ø{BRKT_SHANK_D:.2f} mm × {BRKT_SCREW_N} per bracket × 4 brackets"
 )
