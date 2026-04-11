@@ -222,8 +222,13 @@ def add_screw_hole(target: bpy.types.Object,
         if mod.name in target.modifiers:
             target.modifiers.remove(mod)
 
-    # Remove the cutter object
-    bpy.data.objects.remove(cutter, do_unlink=True)
+    # Remove the cutter object - ensure it's properly unlinked first
+    if cutter:
+        # Unlink from all collections
+        for collection in cutter.users_collection:
+            collection.objects.unlink(cutter)
+        # Remove the data
+        bpy.data.objects.remove(cutter, do_unlink=True)
 
 
 def main():
