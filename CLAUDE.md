@@ -1,7 +1,8 @@
 # CLAUDE.md — 3D Printing Project
 
 # General
-This project is used to track my 3D printing models
+- This project is used to track my 3D printing models
+- You should utilize Python to render all models for use in Blender 5.0
 
 ## GitHub Commits
 - When you are making code changes, ensure you always author an accurate and concise commit message.
