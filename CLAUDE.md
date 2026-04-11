@@ -3,6 +3,7 @@
 # General
 - This project is used to track my 3D printing models
 - You should utilize Python to render all models for use in Blender 5.0
+- Design must fit in the build volume documented in README.md.  If it will not fit then build must be printed in sections to fit within the build volume
 
 ## GitHub Commits
 - When you are making code changes, ensure you always author an accurate and concise commit message.
