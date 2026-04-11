@@ -14,15 +14,24 @@ Parametric scripting lets you:
 
 ---
 
-## Printer
+## Printer Specs — Bambu P2S
 
 | Property | Value |
 |---|---|
-| Printer | Bambu P2S |
 | Build volume | 256 × 256 × 256 mm |
-| Nozzle | 0.4 mm |
+| Layer height | 0.05 – 0.35 mm (typical: 0.2 mm) |
+| Nozzle diameter | 0.4 mm (default) |
+| Max speed | 500 mm/s |
 | Filament | 1.75 mm |
 | Slicer | Bambu Studio |
+
+## Design Tolerances
+
+- Clearance fit (moving parts): +0.2 mm per side
+- Press fit: +0.0 to +0.1 mm per side
+- Minimum wall thickness: 1.2 mm (3× nozzle diameter)
+- Minimum feature size: ~0.4 mm (1× nozzle diameter)
+- Design must fit in the build volume.  If it will not fit then build must be printed in sections to fit within the build volume
 
 ---
 
@@ -152,24 +161,6 @@ Standalone Python scripts that only use standard geometry math (no bpy) can run 
 - Export as **3MF** when color, material assignments, or print settings need to be embedded
 - Apply all transforms before export (`bpy.ops.object.transform_apply`)
 - Ensure mesh is manifold (watertight) — use the 3D Print Toolbox addon to validate
-
-## Printer Specs — Bambu P2S
-
-| Property | Value |
-|---|---|
-| Build volume | 256 × 256 × 256 mm |
-| Layer height | 0.05 – 0.35 mm (typical: 0.2 mm) |
-| Nozzle diameter | 0.4 mm (default) |
-| Max speed | 500 mm/s |
-| Filament | 1.75 mm |
-| Slicer | Bambu Studio |
-
-## Design Tolerances
-
-- Clearance fit (moving parts): +0.2 mm per side
-- Press fit: +0.0 to +0.1 mm per side
-- Minimum wall thickness: 1.2 mm (3× nozzle diameter)
-- Minimum feature size: ~0.4 mm (1× nozzle diameter)
 
 ## Key bpy Patterns
 
