@@ -1,98 +1,64 @@
 # CLAUDE.md — 3D Printing Project
 
-## Project Overview
-
-This project uses **Python** and **Blender's Python API (bpy)** to programmatically generate 3D models. Models are exported for slicing and printing on a **Bambu P2S** 3D printer.
-
-## Code Merges
-
-All code changes should come with a precise and accurate summary for github code commit comments.
-
-## Tech Stack
-
-- **Python** — scripting and model generation logic
-- **Blender (bpy)** — 3D model creation, manipulation, and export
-- **STL / 3MF** — primary export formats for the Bambu slicer (Bambu Studio)
-- **Bambu P2S** — target printer (bed size: 256mm × 256mm × 256mm)
-
-## Running Scripts
-
-Blender scripts must be run within the Blender Python environment. Two common approaches:
-
-```bash
-# Run a script headlessly via Blender CLI
-blender --background --python your_script.py
-
-# Run with a specific .blend file
-blender model.blend --background --python your_script.py
-```
-
-Standalone Python scripts that only use standard geometry math (no bpy) can run with a normal Python interpreter.
-
-## Project Conventions
-
-- Each model or model family lives in its own subdirectory (e.g., `models/widget/`)
-- Scripts that generate models are named descriptively (e.g., `generate_bracket.py`)
-- Exported files go in an `output/` directory (gitignored)
-- Parameters (dimensions, tolerances, counts) should be defined as named constants at the top of each script, not buried as magic numbers
-
-## Export Guidelines
-
-- Export as **STL** for simple single-material prints
-- Export as **3MF** when color, material assignments, or print settings need to be embedded
-- Apply all transforms before export (`bpy.ops.object.transform_apply`)
-- Ensure mesh is manifold (watertight) — use the 3D Print Toolbox addon to validate
-
-## Printer Specs — Bambu P2S
-
-| Property | Value |
-|---|---|
-| Build volume | 256 × 256 × 256 mm |
-| Layer height | 0.05 – 0.35 mm (typical: 0.2 mm) |
-| Nozzle diameter | 0.4 mm (default) |
-| Max speed | 500 mm/s |
-| Filament | 1.75 mm |
-| Slicer | Bambu Studio |
-
-## Design Tolerances
-
-- Clearance fit (moving parts): +0.2 mm per side
-- Press fit: +0.0 to +0.1 mm per side
-- Minimum wall thickness: 1.2 mm (3× nozzle diameter)
-- Minimum feature size: ~0.4 mm (1× nozzle diameter)
-
-## Key bpy Patterns
-
-```python
-import bpy
-
-# Clear scene
-bpy.ops.object.select_all(action='SELECT')
-bpy.ops.object.delete()
-
-# Add a mesh primitive
-bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
-obj = bpy.context.active_object
-
-# Apply transforms before export
-bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-
-# Export STL
-bpy.ops.wm.stl_export(filepath="output/model.stl")
-
-# Export 3MF
-bpy.ops.wm.threemf_export(filepath="output/model.3mf")
-```
-
-## Output Directory
-
-The `output/` directory is gitignored. Generated STL/3MF files go here. Keep source scripts in version control; exports are build artifacts.
-
 # General
 This project is used to track my 3D printing models
 
 ## GitHub Commits
 - When you are making code changes, ensure you always author an accurate and concise commit message.
+
+## Workflow Orchestration
+
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately — don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes — don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests — then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Seek for Clarity**: README.md will have everything you need to understand about the project.  Use it if you have questions.  Use me if you cannot get answers from README.md
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
