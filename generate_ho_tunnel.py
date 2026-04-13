@@ -90,7 +90,9 @@ BRKT_HEIGHTS = {
     ("Right", "Back"): 171.9,  # mm (6.77") — Right-Back bracket height
 }
 BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
-BRKT_HORIZ_EXT = -50.8  # mm (2.0") — horizontal extension inward from wall (negative = inward)
+BRKT_HORIZ_EXT = (
+    -50.8
+)  # mm (2.0") — horizontal extension inward from wall (negative = inward)
 BRKT_SHANK_D = 4.57  # mm (0.18") — bracket screw shank diameter
 BRKT_CSK_D = 8.89  # mm (0.35") — bracket countersink outer diameter
 BRKT_CSK_DEPTH = 2.0  # mm — bracket countersink depth
@@ -99,9 +101,20 @@ BRKT_SCREW_N = 3  # screw holes per bracket
 #   BRKT_HOLE_END_MARGIN: distance from front/back edges to first/last hole (along Y)
 #   BRKT_HOLE_X_OFFSET: shift holes along X (+ = toward tunnel center, - = toward wall)
 BRKT_HOLE_END_MARGIN = 7.62  # mm (0.3") — margin from each end (front/back) along Y
-BRKT_HOLE_X_OFFSET = -6.35  # mm (-0.25") — offset from center of horizontal extension
+BRKT_HOLE_X_OFFSET = -16.5  # mm (-0.25") — offset from center of horizontal extension
 # Transom support (45° triangular gusset for structural strength):
-BRKT_TRANSOM_SIZE = 40.0  # mm — length along both vertical and horizontal edges of transom
+BRKT_TRANSOM_SIZE = (
+    40.0  # mm — length along both vertical and horizontal edges of transom
+)
+
+# ── Bracket attachment (for modular printing) ─────────────────────
+# Brackets attach to ceiling via mounting tabs with bolt holes
+BRKT_TAB_WIDTH = 15.0  # mm — width of mounting tab extending from bracket leg
+BRKT_TAB_LENGTH = 30.0  # mm — length of mounting tab along Y axis
+BRKT_TAB_THICKNESS = 5.5  # mm — same as WALL_T for flush mounting
+BRKT_BOLT_HOLES = 2  # number of bolt holes per bracket tab
+BRKT_BOLT_D = 4.0  # mm — bolt hole diameter (for M4 bolts)
+BRKT_BOLT_SPACING = 20.0  # mm — spacing between bolt holes along Y
 
 # ── Pitch configuration ───────────────────────────────────────────
 # Pitch (grade) of floor board as "rise over run" percentage.
@@ -349,9 +362,9 @@ def make_45deg_transom(name, cx, cy, cz, size, length, x_direction):
 
     # Triangle vertices in local XZ plane (before positioning):
     # Corner at (0, 0), extends along X (signed) and -Z (downward along vertical leg)
-    v0 = (0, 0)                    # Right angle corner
-    v1 = (size * x_direction, 0)   # Along X (horizontal edge, inward)
-    v2 = (0, -size)                # Along -Z (vertical edge, downward)
+    v0 = (0, 0)  # Right angle corner
+    v1 = (size * x_direction, 0)  # Along X (horizontal edge, inward)
+    v2 = (0, -size)  # Along -Z (vertical edge, downward)
 
     # Create front and back faces
     front = [
@@ -428,11 +441,47 @@ for i, (sx, sy) in enumerate(FLOOR_SCREW_POS):
     )
 
 
-# ── 2. CEILING PANEL (solid — no holes) ────────────────────────────
+# ── 2. CEILING PANEL ───────────────────────────────────────────────
 # Solid slab at Z = TOTAL_H - WALL_T → TOTAL_H.
+# Bolt holes for bracket attachment.
 
 ceiling = box("CeilingPanel", 0, 0, TOTAL_H - WALL_T / 2, TUNNEL_W, TUNNEL_LEN, WALL_T)
 link_to(col, ceiling)
+
+# Add bracket mounting bolt holes through ceiling panel
+for side_label, wx in [
+    ("Left", -(TUNNEL_W / 2 - WALL_T / 2)),
+    ("Right", TUNNEL_W / 2 - WALL_T / 2),
+]:
+    for end_label, by in [
+        ("Front", TUNNEL_LEN / 2 - BRKT_LEN / 2),
+        ("Back", -(TUNNEL_LEN / 2 - BRKT_LEN / 2)),
+    ]:
+        # Calculate tab center position (matching bracket tab)
+        # Tab extends inward from inner edge of vertical leg
+        if side_label == "Left":
+            tab_cx = wx + WALL_T
+        else:  # Right
+            tab_cx = wx - WALL_T
+
+        # Add bolt holes at same positions as bracket tab holes
+        for bi in range(BRKT_BOLT_HOLES):
+            if BRKT_BOLT_HOLES == 1:
+                bolt_y = by
+            else:
+                spacing = BRKT_BOLT_SPACING
+                bolt_y = by - spacing / 2 + bi * spacing
+
+            ceiling_hole = make_cone_cutter(
+                f"CeilingBoltHole_{side_label}_{end_label}_{bi}",
+                tab_cx,
+                bolt_y,
+                TOTAL_H - WALL_T / 2,
+                BRKT_BOLT_D / 2,
+                BRKT_BOLT_D / 2,
+                WALL_T + 2 * BOOL_EXTRA,
+            )
+            bool_diff(ceiling, ceiling_hole)
 
 
 # ── 3. SIDE WALLS (Left & Right) ──────────────────────────────────
@@ -511,16 +560,67 @@ for side_label, wx in [
         # Get the height for this specific bracket
         brkt_height = BRKT_HEIGHTS[(side_label, end_label)]
 
-        # Vertical part: flush with side wall
+        # Vertical part: flush with side wall, sits directly on ceiling
+        # Bottom of leg is at ceiling level (TOTAL_H)
+        vert_cz = TOTAL_H + brkt_height / 2
         brkt_vert = box(
             f"BracketVert_{side_label}_{end_label}",
             wx,
             by,
-            TOTAL_H + brkt_height / 2,
+            vert_cz,
             WALL_T,
             BRKT_LEN,
             brkt_height,
         )
+
+        # Add mounting tab at ceiling level for bolt attachment
+        # Tab sits ON TOP of the ceiling panel (outside the tunnel)
+        # Tab has SAME WIDTH as leg (WALL_T) and extends INWARD from inner edge of leg
+        # Tab and leg are touching (adjacent) to form one seamless piece
+        if side_label == "Left":
+            # Left: tab extends inward (+X) from inner edge of leg
+            # Inner edge of leg is at: wx + WALL_T/2
+            # Tab center: wx + WALL_T/2 + WALL_T/2 = wx + WALL_T
+            tab_cx = wx + WALL_T
+        else:  # Right
+            # Right: tab extends inward (-X) from inner edge of leg
+            # Inner edge of leg is at: wx - WALL_T/2
+            # Tab center: wx - WALL_T/2 - WALL_T/2 = wx - WALL_T
+            tab_cx = wx - WALL_T
+
+        tab_cz = TOTAL_H + BRKT_TAB_THICKNESS / 2  # On top of ceiling panel, same Z as bottom of leg
+
+        mounting_tab = box(
+            f"MountingTab_{side_label}_{end_label}",
+            tab_cx,
+            by,
+            tab_cz,
+            WALL_T,  # Same width as vertical leg for seamless appearance
+            BRKT_TAB_LENGTH,
+            BRKT_TAB_THICKNESS,
+        )
+
+        # Add bolt holes through mounting tab
+        for bi in range(BRKT_BOLT_HOLES):
+            if BRKT_BOLT_HOLES == 1:
+                bolt_y = by
+            else:
+                spacing = BRKT_BOLT_SPACING
+                bolt_y = by - spacing / 2 + bi * spacing
+
+            bolt_hole = make_cone_cutter(
+                f"TabBoltHole_{side_label}_{end_label}_{bi}",
+                tab_cx,
+                bolt_y,
+                tab_cz,
+                BRKT_BOLT_D / 2,
+                BRKT_BOLT_D / 2,
+                BRKT_TAB_THICKNESS + 2 * BOOL_EXTRA,
+            )
+            bool_diff(mounting_tab, bolt_hole)
+
+        # Union mounting tab with vertical bracket leg
+        bool_union(brkt_vert, mounting_tab)
 
         # Horizontal part: extends inward from top of vertical part
         # For left wall: extends toward +X (inward)
@@ -584,16 +684,19 @@ for side_label, wx in [
 
         # Add 45-degree transom support (triangular gusset) for structural strength
         # Position at inner corner where vertical meets horizontal
+        # Transom fills the INTERIOR angle of the L-bracket
         if side_label == "Left":
-            # Left side: transom extends +X (inward, toward tunnel center)
+            # Left side: horizontal extends +X, so transom extends -X (back along vertical)
             transom_cx = wx + WALL_T / 2  # Inner edge of vertical part
-            x_dir = 1  # Extend +X
+            x_dir = -1  # Extend -X (toward the vertical wall)
         else:  # Right
-            # Right side: transom extends -X (inward, toward tunnel center)
+            # Right side: horizontal extends -X, so transom extends +X (back along vertical)
             transom_cx = wx - WALL_T / 2  # Inner edge of vertical part
-            x_dir = -1  # Extend -X
+            x_dir = 1  # Extend +X (toward the vertical wall)
 
-        transom_cz = TOTAL_H + brkt_height - WALL_T  # Bottom of horizontal part (junction)
+        transom_cz = (
+            TOTAL_H + brkt_height - WALL_T
+        )  # Bottom of horizontal part (junction)
 
         transom = make_45deg_transom(
             f"Transom_{side_label}_{end_label}",
@@ -604,6 +707,32 @@ for side_label, wx in [
             BRKT_LEN,  # length along Y
             x_dir,  # direction: +1 or -1
         )
+
+        # Cut the same screw holes through the transom gusset
+        # Re-use the same hole positions calculated earlier
+        for hi in range(BRKT_SCREW_N):
+            if BRKT_SCREW_N == 1:
+                hy = by
+            else:
+                spacing = available_len / (BRKT_SCREW_N - 1)
+                hy = by - BRKT_LEN / 2 + BRKT_HOLE_END_MARGIN + hi * spacing
+
+            if side_label == "Left":
+                hole_x = horiz_cx + hole_x_offset
+            else:  # Right
+                hole_x = horiz_cx + hole_x_offset
+
+            cut_csunk_up(
+                transom,
+                f"TransomHole_{side_label}_{end_label}_{hi}",
+                hole_x,
+                hy,
+                horiz_bottom_z,  # Same Z as horizontal bracket holes
+                WALL_T,  # Depth through transom (same as horizontal bracket thickness)
+                BRKT_SHANK_D,
+                BRKT_CSK_D,
+                BRKT_CSK_DEPTH,
+            )
 
         # Union vertical, horizontal, and transom parts into reinforced L-shape
         bool_union(brkt_vert, brkt_horiz)
@@ -644,7 +773,9 @@ print(f"  Portal height         : {PORTAL_H:.1f} mm")
 print(
     f"  Pitch (grade)         : {PITCH_PERCENT:.1f}% ({PITCH_ANGLE_RAD * 180 / math.pi:.3f}°)"
 )
-print(f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall")
+print(
+    f"  Train arch            : {ARCH_W:.1f} mm wide × {ARCH_SPRING_H + ARCH_R:.1f} mm tall"
+)
 print(
     f"  Floor screw holes     : Ø{FLOOR_SHANK_D:.2f} mm shank / "
     f"CSK Ø{FLOOR_CSK_D:.2f} mm × {len(FLOOR_SCREW_POS)}"
