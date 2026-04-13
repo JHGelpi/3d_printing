@@ -42,8 +42,8 @@ import bpy
 # ── Tunnel shell ──────────────────────────────────────────────────
 TUNNEL_LEN = 241.3  # mm (9.5") — outer length along Y (track axis)
 TUNNEL_W = 152.4  # mm (6.0") — outer width along X
-WALL_T = 12.7  # mm (0.25") — all wall / panel thickness
-SIDE_H = 76.2  # mm (3.0") — interior clear height
+WALL_T = 5.5  # mm (0.22") — all wall / panel thickness
+SIDE_H = 82.6  # mm (3.25") — interior clear height (0.25" track + 3.0" train)
 
 # ── End portals ───────────────────────────────────────────────────
 PORTAL_H = 177.8  # mm (7.0") — end facade total height
@@ -82,11 +82,12 @@ FLOOR_SCREW_POS = [
 # L-shaped brackets: vertical part flush with side wall, horizontal extension at top
 # extending inward.  Screw holes on the BOTTOM face of horizontal extension.
 # Heights can be set independently for each of the 4 brackets:
+# Total distance from bracket top to floor top = 260 mm
 BRKT_HEIGHTS = {
-    ("Left", "Front"): 177.8,  # mm (7.0") — Left-Front bracket height
-    ("Left", "Back"): 177.8,  # mm (7.0") — Left-Back bracket height
-    ("Right", "Front"): 177.8,  # mm (7.0") — Right-Front bracket height
-    ("Right", "Back"): 177.8,  # mm (7.0") — Right-Back bracket height
+    ("Left", "Front"): 171.9,  # mm (6.77") — Left-Front bracket height
+    ("Left", "Back"): 171.9,  # mm (6.77") — Left-Back bracket height
+    ("Right", "Front"): 171.9,  # mm (6.77") — Right-Front bracket height
+    ("Right", "Back"): 171.9,  # mm (6.77") — Right-Back bracket height
 }
 BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
 BRKT_HORIZ_EXT = -50.8  # mm (2.0") — horizontal extension inward from wall (negative = inward)
@@ -99,6 +100,8 @@ BRKT_SCREW_N = 3  # screw holes per bracket
 #   BRKT_HOLE_X_OFFSET: shift holes along X (+ = toward tunnel center, - = toward wall)
 BRKT_HOLE_END_MARGIN = 7.62  # mm (0.3") — margin from each end (front/back) along Y
 BRKT_HOLE_X_OFFSET = -6.35  # mm (-0.25") — offset from center of horizontal extension
+# Transom support (45° triangular gusset for structural strength):
+BRKT_TRANSOM_SIZE = 40.0  # mm — length along both vertical and horizontal edges of transom
 
 # ── Pitch configuration ───────────────────────────────────────────
 # Pitch (grade) of floor board as "rise over run" percentage.
@@ -323,6 +326,65 @@ def make_arch_cutter(name, w, spring_h, r, depth, segs=ARCH_SEGS):
     return obj
 
 
+def make_45deg_transom(name, cx, cy, cz, size, length, x_direction):
+    """
+    Create a 45-degree triangular transom support (gusset).
+
+    Triangular cross-section in XZ plane, extruded along Y.
+    - Right angle at origin of triangle
+    - 45-degree hypotenuse
+    - size: length along both X and Z edges from the corner (equal for 45°)
+    - length: extrusion along Y axis
+    - x_direction: +1 for extending +X, -1 for extending -X
+
+    Position (cx, cy, cz) is the inner corner where vertical meets horizontal.
+    """
+    bm = bmesh.new()
+
+    # Define the triangular profile vertices (right-angle triangle)
+    # Front face (Y = -length/2)
+    y0 = -length / 2
+    # Back face (Y = +length/2)
+    y1 = length / 2
+
+    # Triangle vertices in local XZ plane (before positioning):
+    # Corner at (0, 0), extends along X (signed) and -Z (downward along vertical leg)
+    v0 = (0, 0)                    # Right angle corner
+    v1 = (size * x_direction, 0)   # Along X (horizontal edge, inward)
+    v2 = (0, -size)                # Along -Z (vertical edge, downward)
+
+    # Create front and back faces
+    front = [
+        bm.verts.new((cx + v0[0], cy + y0, cz + v0[1])),
+        bm.verts.new((cx + v1[0], cy + y0, cz + v1[1])),
+        bm.verts.new((cx + v2[0], cy + y0, cz + v2[1])),
+    ]
+    back = [
+        bm.verts.new((cx + v0[0], cy + y1, cz + v0[1])),
+        bm.verts.new((cx + v1[0], cy + y1, cz + v1[1])),
+        bm.verts.new((cx + v2[0], cy + y1, cz + v2[1])),
+    ]
+
+    bm.verts.ensure_lookup_table()
+
+    # Create faces
+    bm.faces.new(front)  # Front triangle
+    bm.faces.new(list(reversed(back)))  # Back triangle
+
+    # Side faces (3 rectangular faces connecting front and back)
+    bm.faces.new([front[0], back[0], back[1], front[1]])  # Bottom
+    bm.faces.new([front[1], back[1], back[2], front[2]])  # Hypotenuse
+    bm.faces.new([front[2], back[2], back[0], front[0]])  # Vertical edge
+
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name + "_mesh")
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 # ════════════════════════════════════════════════════════════════
 #  BUILD
 # ════════════════════════════════════════════════════════════════
@@ -520,8 +582,32 @@ for side_label, wx in [
                 BRKT_CSK_DEPTH,
             )
 
-        # Union vertical and horizontal parts into L-shape
+        # Add 45-degree transom support (triangular gusset) for structural strength
+        # Position at inner corner where vertical meets horizontal
+        if side_label == "Left":
+            # Left side: transom extends +X (inward, toward tunnel center)
+            transom_cx = wx + WALL_T / 2  # Inner edge of vertical part
+            x_dir = 1  # Extend +X
+        else:  # Right
+            # Right side: transom extends -X (inward, toward tunnel center)
+            transom_cx = wx - WALL_T / 2  # Inner edge of vertical part
+            x_dir = -1  # Extend -X
+
+        transom_cz = TOTAL_H + brkt_height - WALL_T  # Bottom of horizontal part (junction)
+
+        transom = make_45deg_transom(
+            f"Transom_{side_label}_{end_label}",
+            transom_cx,
+            by,
+            transom_cz,
+            BRKT_TRANSOM_SIZE,  # size along both edges (equal for 45°)
+            BRKT_LEN,  # length along Y
+            x_dir,  # direction: +1 or -1
+        )
+
+        # Union vertical, horizontal, and transom parts into reinforced L-shape
         bool_union(brkt_vert, brkt_horiz)
+        bool_union(brkt_vert, transom)
         brkt = brkt_vert
         brkt.name = f"Bracket_{side_label}_{end_label}"
         link_to(col, brkt)
