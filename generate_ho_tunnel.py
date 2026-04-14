@@ -91,7 +91,8 @@ BRKT_HEIGHTS = {
 }
 BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
 BRKT_HORIZ_EXT = (
-    -50.8
+    # -50.8
+    -55
 )  # mm (2.0") — horizontal extension inward from wall (negative = inward)
 BRKT_SHANK_D = 4.57  # mm (0.18") — bracket screw shank diameter
 BRKT_CSK_D = 8.89  # mm (0.35") — bracket countersink outer diameter
@@ -113,6 +114,9 @@ BRKT_TAB_WIDTH = 10.0  # mm — width of mounting tab extending from bracket leg
 # BRKT_TAB_LENGTH = 30.0  # mm — length of mounting tab along Y axis
 BRKT_TAB_LENGTH = 50.0  # mm — length of mounting tab along Y axis
 BRKT_TAB_THICKNESS = 5.5  # mm — same as WALL_T for flush mounting
+BRKT_TAB_INWARD_OFFSET = (
+    5.0  # mm — additional inward offset for tab position (+ = more inward)
+)
 BRKT_BOLT_HOLES = 2  # number of bolt holes per bracket tab
 BRKT_BOLT_D = 4.0  # mm — bolt hole diameter (for M4 bolts)
 BRKT_BOLT_SPACING = 20.0  # mm — spacing between bolt holes along Y
@@ -461,9 +465,9 @@ for side_label, wx in [
         # Calculate tab center position (matching bracket tab)
         # Tab extends inward from inner edge of vertical leg
         if side_label == "Left":
-            tab_cx = wx + WALL_T
+            tab_cx = wx + WALL_T + BRKT_TAB_INWARD_OFFSET
         else:  # Right
-            tab_cx = wx - WALL_T
+            tab_cx = wx - WALL_T - BRKT_TAB_INWARD_OFFSET
 
         # Add bolt holes at same positions as bracket tab holes
         for bi in range(BRKT_BOLT_HOLES):
@@ -581,13 +585,13 @@ for side_label, wx in [
         if side_label == "Left":
             # Left: tab extends inward (+X) from inner edge of leg
             # Inner edge of leg is at: wx + WALL_T/2
-            # Tab center: wx + WALL_T/2 + WALL_T/2 = wx + WALL_T
-            tab_cx = wx + WALL_T
+            # Tab center: wx + WALL_T/2 + WALL_T/2 + offset = wx + WALL_T + offset
+            tab_cx = wx + WALL_T + BRKT_TAB_INWARD_OFFSET
         else:  # Right
             # Right: tab extends inward (-X) from inner edge of leg
             # Inner edge of leg is at: wx - WALL_T/2
-            # Tab center: wx - WALL_T/2 - WALL_T/2 = wx - WALL_T
-            tab_cx = wx - WALL_T
+            # Tab center: wx - WALL_T/2 - WALL_T/2 - offset = wx - WALL_T - offset
+            tab_cx = wx - WALL_T - BRKT_TAB_INWARD_OFFSET
 
         tab_cz = (
             TOTAL_H + BRKT_TAB_THICKNESS / 2
