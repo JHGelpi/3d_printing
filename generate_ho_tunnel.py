@@ -110,7 +110,7 @@ BRKT_TRANSOM_SIZE = (
 
 # ── Bracket attachment (for modular printing) ─────────────────────
 # Brackets attach to ceiling via mounting tabs with bolt holes
-BRKT_TAB_WIDTH = 10.0  # mm — width of mounting tab extending from bracket leg
+BRKT_TAB_WIDTH = 100.0  # mm — width of mounting tab extending from bracket leg
 # BRKT_TAB_LENGTH = 30.0  # mm — length of mounting tab along Y axis
 BRKT_TAB_LENGTH = 50.0  # mm — length of mounting tab along Y axis
 BRKT_TAB_THICKNESS = 5.5  # mm — same as WALL_T for flush mounting
@@ -602,7 +602,7 @@ for side_label, wx in [
             tab_cx,
             by,
             tab_cz,
-            WALL_T + 15,  # Same width as vertical leg for seamless appearance
+            BRKT_TAB_WIDTH,  # Width of mounting tab (configurable parameter)
             BRKT_TAB_LENGTH,
             BRKT_TAB_THICKNESS,
         )
