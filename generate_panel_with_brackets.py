@@ -177,7 +177,7 @@ def make_tongue_or_groove(name, cx, cy, cz, width, panel_thickness, is_tongue=Tr
         groove = box(
             name,
             cx,
-            cy - tongue_depth / 2,  # Cuts inward from panel edge
+            cy + tongue_depth / 2,  # Cuts inward from panel edge (into positive Y for half2)
             cz,  # Centered in Z
             width + 2 * BOOL_EXTRA,  # Wider to ensure clean cut
             tongue_depth,  # Depth to receive tongue
