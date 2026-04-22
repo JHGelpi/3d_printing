@@ -55,6 +55,13 @@ BRACKET_HORIZ_WIDTH = 30.0  # mm — width along Y axis (same as vertical for co
 BRACKET_SCREW_HOLES = 1  # number of screw holes per bracket (0 = none)
 BRACKET_SCREW_D = 4.0  # mm — screw hole diameter
 
+# ── Interlocking joint (for splitting panel into two printable pieces) ───
+ENABLE_INTERLOCK = True  # Set to False to generate single-piece panel
+INTERLOCK_TYPE = "finger"  # Options: "finger", "zigzag", "dovetail"
+INTERLOCK_TOOTH_COUNT = 5  # Number of teeth/fingers in the joint
+INTERLOCK_DEPTH = 5.0  # mm — how deep each tooth extends into the mating piece
+INTERLOCK_CLEARANCE = 0.2  # mm — printing tolerance gap for fit
+
 # ── Mesh quality ──────────────────────────────────────────────────
 HOLE_SEGS = 32
 BOOL_EXTRA = 2.0  # mm — cutter overshoot for clean boolean results
@@ -125,6 +132,77 @@ def make_cylinder_cutter(name, cx, cy, cz, radius, height, segs=HOLE_SEGS):
     )
     bmesh.ops.translate(bm, verts=ret["verts"], vec=(cx, cy, cz))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name + "_mesh")
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def make_finger_joint_cutter(name, cx, cy, cz, width, height, depth, is_male=True):
+    """
+    Creates a finger joint pattern cutter for interlocking panels.
+
+    Parameters:
+    - cx, cy, cz: center position of the joint
+    - width: total width of the joint area (X dimension)
+    - height: height/thickness to cut through (Z dimension)
+    - depth: how deep each tooth extends (Y dimension)
+    - is_male: True for protruding teeth, False for recessed pockets
+
+    Returns cutter object for boolean operations
+    """
+    bm = bmesh.new()
+
+    # Calculate tooth geometry
+    tooth_width = width / INTERLOCK_TOOTH_COUNT
+
+    # Create alternating fingers along X axis
+    for i in range(INTERLOCK_TOOTH_COUNT):
+        # Alternate: even indices are teeth (if male), odd are gaps
+        if (i % 2 == 0) == is_male:  # XOR logic for male/female pattern
+            # Create a tooth box
+            tooth_x_start = cx - width / 2 + i * tooth_width
+            tooth_x_center = tooth_x_start + tooth_width / 2
+
+            # Adjust depth for clearance
+            actual_depth = depth - INTERLOCK_CLEARANCE if is_male else depth
+
+            # Create box vertices for this tooth
+            half_w = tooth_width / 2
+            half_h = (height + 2 * BOOL_EXTRA) / 2
+            half_d = actual_depth / 2
+
+            # 8 vertices of the box (centered at tooth position)
+            verts_local = [
+                (-half_w, -half_d, -half_h),
+                (half_w, -half_d, -half_h),
+                (half_w, half_d, -half_h),
+                (-half_w, half_d, -half_h),
+                (-half_w, -half_d, half_h),
+                (half_w, -half_d, half_h),
+                (half_w, half_d, half_h),
+                (-half_w, half_d, half_h),
+            ]
+
+            # Transform to world position
+            base_verts = [
+                bm.verts.new((tooth_x_center + v[0], cy + v[1], cz + v[2]))
+                for v in verts_local
+            ]
+
+            # Create faces for the box
+            bm.faces.new([base_verts[0], base_verts[1], base_verts[2], base_verts[3]])  # bottom
+            bm.faces.new([base_verts[4], base_verts[5], base_verts[6], base_verts[7]])  # top
+            bm.faces.new([base_verts[0], base_verts[1], base_verts[5], base_verts[4]])  # front
+            bm.faces.new([base_verts[2], base_verts[3], base_verts[7], base_verts[6]])  # back
+            bm.faces.new([base_verts[0], base_verts[3], base_verts[7], base_verts[4]])  # left
+            bm.faces.new([base_verts[1], base_verts[2], base_verts[6], base_verts[5]])  # right
+
+    bm.verts.ensure_lookup_table()
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
     mesh = bpy.data.meshes.new(name + "_mesh")
     bm.to_mesh(mesh)
     bm.free()
@@ -204,34 +282,102 @@ col = bpy.data.collections.new("Panel_Assembly")
 bpy.context.scene.collection.children.link(col)
 
 
-# ── 1. MAIN PANEL ─────────────────────────────────────────────────
-# Rectangular slab centered at origin
+# ── 1. MAIN PANEL (split into two interlocking pieces if enabled) ────
 
-panel = box(
-    "Panel",
-    0,
-    0,
-    0,
-    PANEL_WIDTH,
-    PANEL_LENGTH,
-    PANEL_THICKNESS,
-)
-col.objects.link(panel)
-try:
-    bpy.context.scene.collection.objects.unlink(panel)
-except RuntimeError:
-    pass
+if ENABLE_INTERLOCK:
+    # Create two panel halves with interlocking joint
+    half_length = PANEL_LENGTH / 2
+
+    # Panel Half 1 (negative Y side, -Y to 0)
+    panel_half1 = box(
+        "Panel_Half1",
+        0,
+        -half_length / 2,
+        0,
+        PANEL_WIDTH,
+        half_length,
+        PANEL_THICKNESS,
+    )
+    col.objects.link(panel_half1)
+    try:
+        bpy.context.scene.collection.objects.unlink(panel_half1)
+    except RuntimeError:
+        pass
+
+    # Panel Half 2 (positive Y side, 0 to +Y)
+    panel_half2 = box(
+        "Panel_Half2",
+        0,
+        half_length / 2,
+        0,
+        PANEL_WIDTH,
+        half_length,
+        PANEL_THICKNESS,
+    )
+    col.objects.link(panel_half2)
+    try:
+        bpy.context.scene.collection.objects.unlink(panel_half2)
+    except RuntimeError:
+        pass
+
+    # Add interlocking joint at Y=0
+    # Half 1 gets male fingers (protruding teeth)
+    joint_male = make_finger_joint_cutter(
+        "Joint_Male",
+        0,  # Centered in X
+        0,  # At the split line Y=0
+        0,  # Centered in Z
+        PANEL_WIDTH,  # Full width
+        PANEL_THICKNESS,  # Panel thickness
+        INTERLOCK_DEPTH,  # Tooth depth
+        is_male=True,
+    )
+    bool_union(panel_half1, joint_male)
+
+    # Half 2 gets female pockets (recessed gaps for teeth to fit)
+    joint_female = make_finger_joint_cutter(
+        "Joint_Female",
+        0,
+        0,
+        0,
+        PANEL_WIDTH,
+        PANEL_THICKNESS,
+        INTERLOCK_DEPTH,
+        is_male=False,
+    )
+    bool_diff(panel_half2, joint_female)
+
+    # Store both halves for later processing
+    panels = [panel_half1, panel_half2]
+
+else:
+    # Single piece panel (no interlock)
+    panel = box(
+        "Panel",
+        0,
+        0,
+        0,
+        PANEL_WIDTH,
+        PANEL_LENGTH,
+        PANEL_THICKNESS,
+    )
+    col.objects.link(panel)
+    try:
+        bpy.context.scene.collection.objects.unlink(panel)
+    except RuntimeError:
+        pass
+    panels = [panel]
 
 
 # ── 2. SEMI-CIRCLE CUTOUT ────────────────────────────────────────
 # Cut semi-circle notch on the +X edge (right long edge) for cable routing
-# The cutout is centered at Y=0, cuts into the edge like a scoop
+# The cutout is centered at Y=HOLE_Y_POSITION, cuts into the edge like a scoop
 
 # Create a cylinder cutter oriented along the Z axis (through panel thickness)
 # Position it so half is inside the panel edge, half is outside
 radius = HOLE_DIAMETER / 2
 hole_cx = PANEL_WIDTH / 2  # At the +X edge
-hole_cy = HOLE_Y_POSITION  # Centered along Y (0 = middle of panel)
+hole_cy = HOLE_Y_POSITION  # Position along Y axis
 hole_cz = 0  # At mid-thickness of panel
 
 semicircle_cutter = make_cylinder_cutter(
@@ -242,7 +388,16 @@ semicircle_cutter = make_cylinder_cutter(
     radius,
     PANEL_THICKNESS + 2 * BOOL_EXTRA,  # Cut through entire thickness
 )
-bool_diff(panel, semicircle_cutter)
+
+# Apply cutout to the appropriate panel(s)
+# If split, only apply to the half that contains the hole position
+if ENABLE_INTERLOCK:
+    if hole_cy < 0:
+        bool_diff(panel_half1, semicircle_cutter)
+    else:
+        bool_diff(panel_half2, semicircle_cutter)
+else:
+    bool_diff(panels[0], semicircle_cutter)
 
 
 # ── 3. L-BRACKETS ─────────────────────────────────────────────────
@@ -257,30 +412,30 @@ for i in range(NUM_BRACKETS):
         # Evenly space brackets along Y axis
         bracket_y = -BRACKET_SPACING / 2 + i * BRACKET_SPACING
 
-    # Protruding bracket part (extends outward from +X edge of panel)
-    # Sits on top of the panel face, flush with the +X edge
-    # The panel face itself forms one side of the "L"
+    # Protruding bracket part (extends perpendicular to panel, downward in Z)
+    # Flush with the +X edge, extends downward from bottom of panel
+    # The panel edge itself forms one side of the "L"
     bracket_cx = (
-        PANEL_WIDTH / 2 + BRACKET_HORIZ_LENGTH / 2
-    )  # Protrudes outward from edge
+        PANEL_WIDTH / 2 - BRACKET_THICKNESS / 2
+    )  # Flush with +X edge (inside edge)
     bracket_cy = bracket_y  # Position along Y axis
     bracket_cz = (
-        PANEL_THICKNESS / 2 + BRACKET_THICKNESS / 2
-    )  # Sits on top of panel
+        -PANEL_THICKNESS / 2 - BRACKET_HORIZ_LENGTH / 2
+    )  # Extends downward from panel bottom
 
     bracket = box(
         f"Bracket{i}",
         bracket_cx,
         bracket_cy,
         bracket_cz,
-        BRACKET_HORIZ_LENGTH,  # Length in X (protrusion)
-        BRACKET_HORIZ_WIDTH,  # Width in Y
-        BRACKET_THICKNESS,  # Thickness in Z
+        BRACKET_THICKNESS,  # Thickness in X (flush with edge)
+        BRACKET_HORIZ_WIDTH,  # Width in Y (along edge)
+        BRACKET_HORIZ_LENGTH,  # Length in Z (perpendicular protrusion)
     )
 
     # Add screw holes if requested
     if BRACKET_SCREW_HOLES > 0:
-        # Add holes through the bracket for mounting screws
+        # Add holes through the bracket for mounting screws (through Z direction)
         for h in range(BRACKET_SCREW_HOLES):
             if BRACKET_SCREW_HOLES == 1:
                 hole_y = bracket_y
@@ -288,6 +443,8 @@ for i in range(NUM_BRACKETS):
                 hole_spacing = BRACKET_HORIZ_WIDTH * 0.6 / (BRACKET_SCREW_HOLES - 1)
                 hole_y = bracket_y - (BRACKET_HORIZ_WIDTH * 0.3) + h * hole_spacing
 
+            # Rotate the cylinder to go through the bracket thickness (in X direction)
+            # Create cylinder along Z, then we'll rotate it to go through X
             screw_hole = make_cylinder_cutter(
                 f"Bracket{i}_ScrewHole{h}",
                 bracket_cx,
@@ -296,10 +453,23 @@ for i in range(NUM_BRACKETS):
                 BRACKET_SCREW_D / 2,
                 BRACKET_THICKNESS + 2 * BOOL_EXTRA,
             )
+            # Rotate to make hole go through X direction (through bracket thickness)
+            screw_hole.rotation_euler = (0, math.pi / 2, 0)
+            bpy.context.view_layer.objects.active = screw_hole
+            screw_hole.select_set(True)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+            screw_hole.select_set(False)
             bool_diff(bracket, screw_hole)
 
-    # Union bracket with panel
-    bool_union(panel, bracket)
+    # Union bracket with the appropriate panel half
+    if ENABLE_INTERLOCK:
+        # Determine which half this bracket belongs to based on Y position
+        if bracket_y < 0:
+            bool_union(panel_half1, bracket)
+        else:
+            bool_union(panel_half2, bracket)
+    else:
+        bool_union(panels[0], bracket)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -313,11 +483,17 @@ output_dir = os.path.join(script_dir, "output")
 os.makedirs(output_dir, exist_ok=True)
 
 bpy.ops.object.select_all(action="DESELECT")
-panel.select_set(True)
-bpy.context.view_layer.objects.active = panel
-bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-out_path = os.path.join(output_dir, "panel_with_brackets.stl")
-bpy.ops.wm.stl_export(filepath=out_path, export_selected_objects=True)
+
+# Export each panel piece
+export_files = []
+for panel_obj in panels:
+    panel_obj.select_set(True)
+    bpy.context.view_layer.objects.active = panel_obj
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    out_path = os.path.join(output_dir, f"{panel_obj.name}.stl")
+    bpy.ops.wm.stl_export(filepath=out_path, export_selected_objects=True)
+    export_files.append(out_path)
+    panel_obj.select_set(False)
 
 print("=" * 62)
 print("  Panel with L-Brackets — build complete")
@@ -325,14 +501,19 @@ print("=" * 62)
 print(
     f"  Panel dimensions      : {PANEL_WIDTH:.2f} × {PANEL_LENGTH:.2f} × {PANEL_THICKNESS:.2f} mm"
 )
-print(f"  Semi-circle hole      : Ø{HOLE_DIAMETER:.2f} mm")
+print(f"  Semi-circle cutout    : Ø{HOLE_DIAMETER:.2f} mm")
 print(f"  Number of brackets    : {NUM_BRACKETS}")
-print(
-    f"  Bracket vertical size : {BRACKET_VERT_WIDTH:.2f} × {BRACKET_VERT_HEIGHT:.2f} mm"
-)
-print(
-    f"  Bracket horizontal    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm"
-)
+print(f"  Bracket dimensions    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm")
 print(f"  Screw holes/bracket   : {BRACKET_SCREW_HOLES}")
-print(f"  Output file           : {out_path}")
+if ENABLE_INTERLOCK:
+    print(f"  Interlocking joint    : {INTERLOCK_TYPE} pattern")
+    print(f"    Tooth count         : {INTERLOCK_TOOTH_COUNT}")
+    print(f"    Tooth depth         : {INTERLOCK_DEPTH:.2f} mm")
+    print(f"    Print clearance     : {INTERLOCK_CLEARANCE:.2f} mm")
+    print(f"  Split into pieces     : 2")
+else:
+    print(f"  Split into pieces     : 1 (single piece)")
+print(f"  Output files          :")
+for f in export_files:
+    print(f"    {f}")
 print("=" * 62)
