@@ -57,9 +57,9 @@ BRACKET_SCREW_D = 4.0  # mm — screw hole diameter
 
 # ── Interlocking joint (for splitting panel into two printable pieces) ───
 ENABLE_INTERLOCK = True  # Set to False to generate single-piece panel
-INTERLOCK_TYPE = "finger"  # Options: "finger", "zigzag", "dovetail"
-INTERLOCK_TOOTH_COUNT = 5  # Number of teeth/fingers in the joint
-INTERLOCK_DEPTH = 5.0  # mm — how deep each tooth extends into the mating piece
+INTERLOCK_TYPE = "tongue_groove"  # tongue and groove joint (invisible when assembled)
+TONGUE_HEIGHT = 2.0  # mm — height of the tongue/groove (must be < PANEL_THICKNESS)
+TONGUE_DEPTH = 3.0  # mm — how deep the tongue extends into the mating piece
 INTERLOCK_CLEARANCE = 0.2  # mm — printing tolerance gap for fit
 
 # ── Mesh quality ──────────────────────────────────────────────────
@@ -140,75 +140,50 @@ def make_cylinder_cutter(name, cx, cy, cz, radius, height, segs=HOLE_SEGS):
     return obj
 
 
-def make_finger_joint_cutter(name, cx, cy, cz, width, height, depth, is_male=True):
+def make_tongue_or_groove(name, cx, cy, cz, width, panel_thickness, is_tongue=True):
     """
-    Creates a finger joint pattern cutter for interlocking panels.
+    Creates a tongue or groove for tongue-and-groove joint.
+    The joint is centered in the panel thickness so it's invisible when assembled.
 
     Parameters:
     - cx, cy, cz: center position of the joint
-    - width: total width of the joint area (X dimension)
-    - height: height/thickness to cut through (Z dimension)
-    - depth: how deep each tooth extends (Y dimension)
-    - is_male: True for protruding teeth, False for recessed pockets
+    - width: width of the panel (X dimension)
+    - panel_thickness: thickness of the panel (Z dimension)
+    - is_tongue: True for protruding tongue, False for groove cavity
 
-    Returns cutter object for boolean operations
+    Returns object for boolean operations (union for tongue, diff for groove)
     """
-    bm = bmesh.new()
+    # Tongue dimensions (centered in panel thickness)
+    tongue_height = TONGUE_HEIGHT - INTERLOCK_CLEARANCE if is_tongue else TONGUE_HEIGHT
+    tongue_depth = TONGUE_DEPTH - INTERLOCK_CLEARANCE if is_tongue else TONGUE_DEPTH
 
-    # Calculate tooth geometry
-    tooth_width = width / INTERLOCK_TOOTH_COUNT
+    # The tongue/groove is centered in Z, recessed from both surfaces
+    # This makes it invisible from top and bottom
 
-    # Create alternating fingers along X axis
-    for i in range(INTERLOCK_TOOTH_COUNT):
-        # Alternate: even indices are teeth (if male), odd are gaps
-        if (i % 2 == 0) == is_male:  # XOR logic for male/female pattern
-            # Create a tooth box
-            tooth_x_start = cx - width / 2 + i * tooth_width
-            tooth_x_center = tooth_x_start + tooth_width / 2
-
-            # Adjust depth for clearance
-            actual_depth = depth - INTERLOCK_CLEARANCE if is_male else depth
-
-            # Create box vertices for this tooth
-            half_w = tooth_width / 2
-            half_h = (height + 2 * BOOL_EXTRA) / 2
-            half_d = actual_depth / 2
-
-            # 8 vertices of the box (centered at tooth position)
-            verts_local = [
-                (-half_w, -half_d, -half_h),
-                (half_w, -half_d, -half_h),
-                (half_w, half_d, -half_h),
-                (-half_w, half_d, -half_h),
-                (-half_w, -half_d, half_h),
-                (half_w, -half_d, half_h),
-                (half_w, half_d, half_h),
-                (-half_w, half_d, half_h),
-            ]
-
-            # Transform to world position
-            base_verts = [
-                bm.verts.new((tooth_x_center + v[0], cy + v[1], cz + v[2]))
-                for v in verts_local
-            ]
-
-            # Create faces for the box
-            bm.faces.new([base_verts[0], base_verts[1], base_verts[2], base_verts[3]])  # bottom
-            bm.faces.new([base_verts[4], base_verts[5], base_verts[6], base_verts[7]])  # top
-            bm.faces.new([base_verts[0], base_verts[1], base_verts[5], base_verts[4]])  # front
-            bm.faces.new([base_verts[2], base_verts[3], base_verts[7], base_verts[6]])  # back
-            bm.faces.new([base_verts[0], base_verts[3], base_verts[7], base_verts[4]])  # left
-            bm.faces.new([base_verts[1], base_verts[2], base_verts[6], base_verts[5]])  # right
-
-    bm.verts.ensure_lookup_table()
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-
-    mesh = bpy.data.meshes.new(name + "_mesh")
-    bm.to_mesh(mesh)
-    bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    return obj
+    if is_tongue:
+        # Create protruding tongue on the edge
+        tongue = box(
+            name,
+            cx,
+            cy + tongue_depth / 2,  # Extends outward from panel edge
+            cz,  # Centered in Z
+            width,  # Full width of panel
+            tongue_depth,  # Protrusion depth
+            tongue_height,  # Height (less than panel thickness)
+        )
+        return tongue
+    else:
+        # Create groove cavity to receive the tongue
+        groove = box(
+            name,
+            cx,
+            cy - tongue_depth / 2,  # Cuts inward from panel edge
+            cz,  # Centered in Z
+            width + 2 * BOOL_EXTRA,  # Wider to ensure clean cut
+            tongue_depth,  # Depth to receive tongue
+            tongue_height,  # Height matching tongue
+        )
+        return groove
 
 
 def make_semicircle_cutter(name, cx, cy, cz, diameter, depth, segs=HOLE_SEGS):
@@ -320,32 +295,30 @@ if ENABLE_INTERLOCK:
     except RuntimeError:
         pass
 
-    # Add interlocking joint at Y=0
-    # Half 1 gets male fingers (protruding teeth)
-    joint_male = make_finger_joint_cutter(
-        "Joint_Male",
+    # Add tongue and groove joint at Y=0
+    # Half 1 (negative Y) gets protruding tongue
+    tongue = make_tongue_or_groove(
+        "Tongue",
         0,  # Centered in X
         0,  # At the split line Y=0
         0,  # Centered in Z
         PANEL_WIDTH,  # Full width
         PANEL_THICKNESS,  # Panel thickness
-        INTERLOCK_DEPTH,  # Tooth depth
-        is_male=True,
+        is_tongue=True,
     )
-    bool_union(panel_half1, joint_male)
+    bool_union(panel_half1, tongue)
 
-    # Half 2 gets female pockets (recessed gaps for teeth to fit)
-    joint_female = make_finger_joint_cutter(
-        "Joint_Female",
+    # Half 2 (positive Y) gets groove cavity to receive the tongue
+    groove = make_tongue_or_groove(
+        "Groove",
         0,
         0,
         0,
         PANEL_WIDTH,
         PANEL_THICKNESS,
-        INTERLOCK_DEPTH,
-        is_male=False,
+        is_tongue=False,
     )
-    bool_diff(panel_half2, joint_female)
+    bool_diff(panel_half2, groove)
 
     # Store both halves for later processing
     panels = [panel_half1, panel_half2]
@@ -506,9 +479,9 @@ print(f"  Number of brackets    : {NUM_BRACKETS}")
 print(f"  Bracket dimensions    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm")
 print(f"  Screw holes/bracket   : {BRACKET_SCREW_HOLES}")
 if ENABLE_INTERLOCK:
-    print(f"  Interlocking joint    : {INTERLOCK_TYPE} pattern")
-    print(f"    Tooth count         : {INTERLOCK_TOOTH_COUNT}")
-    print(f"    Tooth depth         : {INTERLOCK_DEPTH:.2f} mm")
+    print(f"  Interlocking joint    : {INTERLOCK_TYPE}")
+    print(f"    Tongue height       : {TONGUE_HEIGHT:.2f} mm")
+    print(f"    Tongue depth        : {TONGUE_DEPTH:.2f} mm")
     print(f"    Print clearance     : {INTERLOCK_CLEARANCE:.2f} mm")
     print(f"  Split into pieces     : 2")
 else:
