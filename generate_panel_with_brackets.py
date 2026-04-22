@@ -58,8 +58,9 @@ BRACKET_SCREW_D = 4.0  # mm — screw hole diameter
 # ── Interlocking joint (for splitting panel into two printable pieces) ───
 ENABLE_INTERLOCK = True  # Set to False to generate single-piece panel
 INTERLOCK_TYPE = "tongue_groove"  # tongue and groove joint (invisible when assembled)
-TONGUE_HEIGHT = 2.0  # mm — height of the tongue/groove (must be < PANEL_THICKNESS)
+TONGUE_HEIGHT = 2.0  # mm — height of the tongue/groove at base (must be < PANEL_THICKNESS)
 TONGUE_DEPTH = 3.0  # mm — how deep the tongue extends into the mating piece
+TONGUE_TAPER_ANGLE = 15.0  # degrees — taper angle for V-shape (0 = straight, 15-30 typical)
 INTERLOCK_CLEARANCE = 0.2  # mm — printing tolerance gap for fit
 
 # ── Mesh quality ──────────────────────────────────────────────────
@@ -142,8 +143,9 @@ def make_cylinder_cutter(name, cx, cy, cz, radius, height, segs=HOLE_SEGS):
 
 def make_tongue_or_groove(name, cx, cy, cz, width, panel_thickness, is_tongue=True):
     """
-    Creates a tongue or groove for tongue-and-groove joint.
+    Creates a V-shaped tongue or groove for tongue-and-groove joint.
     The joint is centered in the panel thickness so it's invisible when assembled.
+    The V-shape provides mechanical locking strength.
 
     Parameters:
     - cx, cy, cz: center position of the joint
@@ -153,37 +155,97 @@ def make_tongue_or_groove(name, cx, cy, cz, width, panel_thickness, is_tongue=Tr
 
     Returns object for boolean operations (union for tongue, diff for groove)
     """
+    # Calculate taper based on angle
+    taper_angle_rad = math.radians(TONGUE_TAPER_ANGLE)
+    # Height increase over the depth due to taper (on each side, top and bottom)
+    taper_expansion = TONGUE_DEPTH * math.tan(taper_angle_rad)
+
     # Tongue dimensions (centered in panel thickness)
-    tongue_height = TONGUE_HEIGHT - INTERLOCK_CLEARANCE if is_tongue else TONGUE_HEIGHT
+    base_height = TONGUE_HEIGHT - INTERLOCK_CLEARANCE if is_tongue else TONGUE_HEIGHT
     tongue_depth = TONGUE_DEPTH - INTERLOCK_CLEARANCE if is_tongue else TONGUE_DEPTH
+
+    # Tip height (wider due to V-shape taper)
+    tip_height = base_height + 2 * taper_expansion  # Expands on both top and bottom
+
+    # Create V-shaped profile using bmesh
+    bm = bmesh.new()
 
     # The tongue/groove is centered in Z, recessed from both surfaces
     # This makes it invisible from top and bottom
 
     if is_tongue:
-        # Create protruding tongue on the edge
-        tongue = box(
-            name,
-            cx,
-            cy + tongue_depth / 2,  # Extends outward from panel edge
-            cz,  # Centered in Z
-            width,  # Full width of panel
-            tongue_depth,  # Protrusion depth
-            tongue_height,  # Height (less than panel thickness)
-        )
-        return tongue
+        # Create tapered tongue: narrow at base, wide at tip
+        # Profile in YZ plane, extruded along X
+
+        # Base edge (at panel edge, Y=0)
+        base_z_half = base_height / 2
+        # Tip edge (at Y=tongue_depth)
+        tip_z_half = tip_height / 2
+
+        # Y positions
+        y_base = cy
+        y_tip = cy + tongue_depth
+
+        # Create vertices for front face (X = -width/2)
+        x_front = cx - width / 2
+        v0_front = bm.verts.new((x_front, y_base, cz - base_z_half))  # Base bottom
+        v1_front = bm.verts.new((x_front, y_base, cz + base_z_half))  # Base top
+        v2_front = bm.verts.new((x_front, y_tip, cz + tip_z_half))    # Tip top
+        v3_front = bm.verts.new((x_front, y_tip, cz - tip_z_half))    # Tip bottom
+
+        # Create vertices for back face (X = +width/2)
+        x_back = cx + width / 2
+        v0_back = bm.verts.new((x_back, y_base, cz - base_z_half))
+        v1_back = bm.verts.new((x_back, y_base, cz + base_z_half))
+        v2_back = bm.verts.new((x_back, y_tip, cz + tip_z_half))
+        v3_back = bm.verts.new((x_back, y_tip, cz - tip_z_half))
+
     else:
-        # Create groove cavity to receive the tongue
-        groove = box(
-            name,
-            cx,
-            cy + tongue_depth / 2,  # Cuts inward from panel edge (into positive Y for half2)
-            cz,  # Centered in Z
-            width + 2 * BOOL_EXTRA,  # Wider to ensure clean cut
-            tongue_depth,  # Depth to receive tongue
-            tongue_height,  # Height matching tongue
-        )
-        return groove
+        # Create tapered groove: narrow at opening, wide at bottom
+        # This matches the tongue profile (narrow base slides in, wide tip locks at bottom)
+
+        # Opening edge (at panel edge, Y=0) - narrower (matches tongue base)
+        opening_z_half = base_height / 2
+        # Bottom edge (at Y=tongue_depth) - wider (matches tongue tip)
+        bottom_z_half = tip_height / 2
+
+        # Y positions
+        y_opening = cy
+        y_bottom = cy + tongue_depth
+
+        # Add extra width for clean boolean cut
+        x_front = cx - width / 2 - BOOL_EXTRA
+        x_back = cx + width / 2 + BOOL_EXTRA
+
+        # Create vertices for front face
+        v0_front = bm.verts.new((x_front, y_opening, cz - opening_z_half))  # Opening bottom
+        v1_front = bm.verts.new((x_front, y_opening, cz + opening_z_half))  # Opening top
+        v2_front = bm.verts.new((x_front, y_bottom, cz + bottom_z_half))    # Bottom top
+        v3_front = bm.verts.new((x_front, y_bottom, cz - bottom_z_half))    # Bottom bottom
+
+        # Create vertices for back face
+        v0_back = bm.verts.new((x_back, y_opening, cz - opening_z_half))
+        v1_back = bm.verts.new((x_back, y_opening, cz + opening_z_half))
+        v2_back = bm.verts.new((x_back, y_bottom, cz + bottom_z_half))
+        v3_back = bm.verts.new((x_back, y_bottom, cz - bottom_z_half))
+
+    # Create faces
+    bm.faces.new([v0_front, v1_front, v2_front, v3_front])  # Front face
+    bm.faces.new([v0_back, v3_back, v2_back, v1_back])      # Back face (reversed)
+    bm.faces.new([v0_front, v0_back, v1_back, v1_front])    # Base edge
+    bm.faces.new([v1_front, v1_back, v2_back, v2_front])    # Top slope
+    bm.faces.new([v2_front, v2_back, v3_back, v3_front])    # Tip edge
+    bm.faces.new([v3_front, v3_back, v0_back, v0_front])    # Bottom slope
+
+    bm.verts.ensure_lookup_table()
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+    mesh = bpy.data.meshes.new(name + "_mesh")
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
 
 
 def make_semicircle_cutter(name, cx, cy, cz, diameter, depth, segs=HOLE_SEGS):
@@ -479,9 +541,10 @@ print(f"  Number of brackets    : {NUM_BRACKETS}")
 print(f"  Bracket dimensions    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm")
 print(f"  Screw holes/bracket   : {BRACKET_SCREW_HOLES}")
 if ENABLE_INTERLOCK:
-    print(f"  Interlocking joint    : {INTERLOCK_TYPE}")
-    print(f"    Tongue height       : {TONGUE_HEIGHT:.2f} mm")
+    print(f"  Interlocking joint    : {INTERLOCK_TYPE} (V-shaped)")
+    print(f"    Tongue height (base): {TONGUE_HEIGHT:.2f} mm")
     print(f"    Tongue depth        : {TONGUE_DEPTH:.2f} mm")
+    print(f"    Taper angle         : {TONGUE_TAPER_ANGLE:.1f}°")
     print(f"    Print clearance     : {INTERLOCK_CLEARANCE:.2f} mm")
     print(f"  Split into pieces     : 2")
 else:
