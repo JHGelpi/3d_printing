@@ -425,9 +425,30 @@ semicircle_cutter = make_cylinder_cutter(
 )
 
 # Apply cutout to the appropriate panel(s)
-# If split, only apply to the half that contains the hole position
+# If split, check if hole is at split line or in one half
 if ENABLE_INTERLOCK:
-    if hole_cy < 0:
+    # If hole is at or very close to the split line (Y=0), cut both halves
+    if abs(hole_cy) < radius:  # Hole overlaps the split line
+        # Need to create two separate cutters since boolean ops consume the cutter
+        semicircle_cutter1 = make_cylinder_cutter(
+            "SemicircleCutout1",
+            hole_cx,
+            hole_cy,
+            hole_cz,
+            radius,
+            PANEL_THICKNESS + 2 * BOOL_EXTRA,
+        )
+        semicircle_cutter2 = make_cylinder_cutter(
+            "SemicircleCutout2",
+            hole_cx,
+            hole_cy,
+            hole_cz,
+            radius,
+            PANEL_THICKNESS + 2 * BOOL_EXTRA,
+        )
+        bool_diff(panel_half1, semicircle_cutter1)
+        bool_diff(panel_half2, semicircle_cutter2)
+    elif hole_cy < 0:
         bool_diff(panel_half1, semicircle_cutter)
     else:
         bool_diff(panel_half2, semicircle_cutter)
