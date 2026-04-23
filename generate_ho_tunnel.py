@@ -83,13 +83,19 @@ FLOOR_SCREW_POS = [
 # extending inward.  Screw holes on the BOTTOM face of horizontal extension.
 # Heights can be set independently for each of the 4 brackets:
 # Total distance from bracket top to floor top = 260 mm
+BRKT_GLOBAL_WIDTH = 50.8
+BKT_LEG_GLOBAL_HEIGHT = 171.9
 BRKT_HEIGHTS = {
-    ("Left", "Front"): 171.9,  # mm (6.77") — Left-Front bracket height
-    ("Left", "Back"): 171.9,  # mm (6.77") — Left-Back bracket height
-    ("Right", "Front"): 171.9,  # mm (6.77") — Right-Front bracket height
-    ("Right", "Back"): 171.9,  # mm (6.77") — Right-Back bracket height
+    ("Left", "Front"): BKT_LEG_GLOBAL_HEIGHT,  # mm (6.77") — Left-Front bracket height
+    ("Left", "Back"): BKT_LEG_GLOBAL_HEIGHT,  # mm (6.77") — Left-Back bracket height
+    (
+        "Right",
+        "Front",
+    ): BKT_LEG_GLOBAL_HEIGHT,  # mm (6.77") — Right-Front bracket height
+    ("Right", "Back"): BKT_LEG_GLOBAL_HEIGHT,  # mm (6.77") — Right-Back bracket height
 }
-BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
+# BRKT_LEN = 50.8  # mm (2.0") — bracket length along Y (tunnel axis)
+BRKT_LEN = BRKT_GLOBAL_WIDTH
 BRKT_HORIZ_EXT = (
     # -50.8
     -55
@@ -110,9 +116,11 @@ BRKT_TRANSOM_SIZE = (
 
 # ── Bracket attachment (for modular printing) ─────────────────────
 # Brackets attach to ceiling via mounting tabs with bolt holes
-BRKT_TAB_WIDTH = 100.0  # mm — width of mounting tab extending from bracket leg
+BRKT_TAB_WIDTH = 20.0  # mm — width of mounting tab extending from bracket leg
 # BRKT_TAB_LENGTH = 30.0  # mm — length of mounting tab along Y axis
-BRKT_TAB_LENGTH = 50.0  # mm — length of mounting tab along Y axis
+# BRKT_TAB_LENGTH = 50.8  # mm — length of mounting tab along Y axis
+BRKT_TAB_LENGTH = BRKT_GLOBAL_WIDTH
+
 BRKT_TAB_THICKNESS = 5.5  # mm — same as WALL_T for flush mounting
 BRKT_TAB_INWARD_OFFSET = (
     5.0  # mm — additional inward offset for tab position (+ = more inward)
