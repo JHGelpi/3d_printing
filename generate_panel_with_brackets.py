@@ -1,12 +1,12 @@
 """
 Panel with L-Brackets — bpy Generator
 ----------------------------------------------
-Generates a rectangular panel with semi-circle hole and mounting L-brackets.
+Generates a rectangular panel with semi-circle holes and mounting L-brackets.
 
 Features:
   • Rectangular panel with configurable dimensions
-  • Semi-circle hole on one long edge (for cable routing, etc.)
-  • Two L-brackets flush with the same long edge for mounting
+  • Semi-circle holes on both long edges (for cable routing, etc.)
+  • Two L-brackets flush with one long edge for mounting
   • All dimensions fully parameterized
 
 Coordinate system (all mm):
@@ -31,9 +31,9 @@ PANEL_WIDTH = 130  # mm (5.125 cm) — short dimension (X)
 PANEL_LENGTH = 431.8  # mm (43.18 cm) — long dimension (Y)
 PANEL_THICKNESS = 5.0  # mm (0.5 cm) — panel thickness (Z)
 
-# ── Semi-circle cutout ────────────────────────────────────────────
-# Cutout is on the +X edge (right long edge), for cable routing
-HOLE_DIAMETER = 12.7  # mm (1.27 cm) — diameter of semi-circle cutout
+# ── Semi-circle cutouts ────────────────────────────────────────────
+# Cutouts are on both long edges (+X and -X), for cable routing
+HOLE_DIAMETER = 12.7  # mm (1.27 cm) — diameter of semi-circle cutouts
 HOLE_Y_POSITION = 0.0  # mm — position along Y axis (0 = centered)
 
 # ── L-brackets ────────────────────────────────────────────────────
@@ -404,9 +404,9 @@ else:
     panels = [panel]
 
 
-# ── 2. SEMI-CIRCLE CUTOUT ────────────────────────────────────────
-# Cut semi-circle notch on the +X edge (right long edge) for cable routing
-# The cutout is centered at Y=HOLE_Y_POSITION, cuts into the edge like a scoop
+# ── 2. SEMI-CIRCLE CUTOUTS ────────────────────────────────────────
+# Cut semi-circle notches on both long edges (+X and -X) for cable routing
+# Both cutouts are centered at Y=HOLE_Y_POSITION, cut into the edges like scoops
 
 # Create a cylinder cutter oriented along the Z axis (through panel thickness)
 # Position it so half is inside the panel edge, half is outside
@@ -454,6 +454,49 @@ if ENABLE_INTERLOCK:
         bool_diff(panel_half2, semicircle_cutter)
 else:
     bool_diff(panels[0], semicircle_cutter)
+
+# Second semi-circle cutout on the -X edge (left long edge)
+# Mirror of the first cutout, same diameter and Y position
+hole_cx_opposite = -PANEL_WIDTH / 2  # At the -X edge (opposite side)
+
+semicircle_cutter_opposite = make_cylinder_cutter(
+    "SemicircleCutout_Opposite",
+    hole_cx_opposite,
+    hole_cy,
+    hole_cz,
+    radius,
+    PANEL_THICKNESS + 2 * BOOL_EXTRA,  # Cut through entire thickness
+)
+
+# Apply cutout to the appropriate panel(s)
+if ENABLE_INTERLOCK:
+    # If hole is at or very close to the split line (Y=0), cut both halves
+    if abs(hole_cy) < radius:  # Hole overlaps the split line
+        # Need to create two separate cutters since boolean ops consume the cutter
+        semicircle_cutter_opp1 = make_cylinder_cutter(
+            "SemicircleCutout_Opposite1",
+            hole_cx_opposite,
+            hole_cy,
+            hole_cz,
+            radius,
+            PANEL_THICKNESS + 2 * BOOL_EXTRA,
+        )
+        semicircle_cutter_opp2 = make_cylinder_cutter(
+            "SemicircleCutout_Opposite2",
+            hole_cx_opposite,
+            hole_cy,
+            hole_cz,
+            radius,
+            PANEL_THICKNESS + 2 * BOOL_EXTRA,
+        )
+        bool_diff(panel_half1, semicircle_cutter_opp1)
+        bool_diff(panel_half2, semicircle_cutter_opp2)
+    elif hole_cy < 0:
+        bool_diff(panel_half1, semicircle_cutter_opposite)
+    else:
+        bool_diff(panel_half2, semicircle_cutter_opposite)
+else:
+    bool_diff(panels[0], semicircle_cutter_opposite)
 
 
 # ── 3. L-BRACKETS ─────────────────────────────────────────────────
@@ -557,7 +600,7 @@ print("=" * 62)
 print(
     f"  Panel dimensions      : {PANEL_WIDTH:.2f} × {PANEL_LENGTH:.2f} × {PANEL_THICKNESS:.2f} mm"
 )
-print(f"  Semi-circle cutout    : Ø{HOLE_DIAMETER:.2f} mm")
+print(f"  Semi-circle cutouts   : Ø{HOLE_DIAMETER:.2f} mm (both long edges)")
 print(f"  Number of brackets    : {NUM_BRACKETS}")
 print(f"  Bracket dimensions    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm")
 print(f"  Screw holes/bracket   : {BRACKET_SCREW_HOLES}")
