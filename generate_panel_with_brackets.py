@@ -6,7 +6,7 @@ Generates a rectangular panel with semi-circle holes and mounting L-brackets.
 Features:
   • Rectangular panel with configurable dimensions
   • Semi-circle holes on both long edges (for cable routing, etc.)
-  • Two L-brackets flush with one long edge for mounting
+  • Four L-brackets total: 2 on each long edge for mounting
   • All dimensions fully parameterized
 
 Coordinate system (all mm):
@@ -37,9 +37,9 @@ HOLE_DIAMETER = 12.7  # mm (1.27 cm) — diameter of semi-circle cutouts
 HOLE_Y_POSITION = 0.0  # mm — position along Y axis (0 = centered)
 
 # ── L-brackets ────────────────────────────────────────────────────
-# Two L-brackets on the +X edge (same edge as semi-circle cutout)
-# Brackets are flush with the edge and protrude perpendicular to panel
-NUM_BRACKETS = 2  # number of L-brackets
+# Four L-brackets total: 2 on each long edge (+X and -X)
+# Brackets are flush with their respective edges and protrude perpendicular to panel
+NUM_BRACKETS = 2  # number of L-brackets per edge (total = NUM_BRACKETS × 2)
 BRACKET_SPACING = 300.0  # mm — distance between bracket centers along Y
 BRACKET_THICKNESS = 5.0  # mm — bracket wall thickness (same as panel for flush fit)
 
@@ -570,6 +570,73 @@ for i in range(NUM_BRACKETS):
     else:
         bool_union(panels[0], bracket)
 
+# L-brackets on the -X edge (left long edge) — mirror of the +X edge brackets
+# Same spacing and dimensions, but on the opposite side
+for i in range(NUM_BRACKETS):
+    if NUM_BRACKETS == 1:
+        bracket_y = 0  # Single bracket at center
+    else:
+        # Evenly space brackets along Y axis (same positions as +X edge)
+        bracket_y = -BRACKET_SPACING / 2 + i * BRACKET_SPACING
+
+    # Protruding bracket part (extends perpendicular to panel, downward in Z)
+    # Flush with the -X edge, extends downward from bottom of panel
+    bracket_cx = (
+        -PANEL_WIDTH / 2 + BRACKET_THICKNESS / 2
+    )  # Flush with -X edge (inside edge)
+    bracket_cy = bracket_y  # Position along Y axis
+    bracket_cz = (
+        -PANEL_THICKNESS / 2 - BRACKET_HORIZ_LENGTH / 2
+    )  # Extends downward from panel bottom
+
+    bracket = box(
+        f"Bracket_Opposite{i}",
+        bracket_cx,
+        bracket_cy,
+        bracket_cz,
+        BRACKET_THICKNESS,  # Thickness in X (flush with edge)
+        BRACKET_HORIZ_WIDTH,  # Width in Y (along edge)
+        BRACKET_HORIZ_LENGTH,  # Length in Z (perpendicular protrusion)
+    )
+
+    # Add screw holes if requested
+    if BRACKET_SCREW_HOLES > 0:
+        # Add holes through the bracket for mounting screws (through X direction)
+        for h in range(BRACKET_SCREW_HOLES):
+            if BRACKET_SCREW_HOLES == 1:
+                hole_y = bracket_y
+            else:
+                hole_spacing = BRACKET_HORIZ_WIDTH * 0.6 / (BRACKET_SCREW_HOLES - 1)
+                hole_y = bracket_y - (BRACKET_HORIZ_WIDTH * 0.3) + h * hole_spacing
+
+            # Rotate the cylinder to go through the bracket thickness (in X direction)
+            # Create cylinder along Z, then we'll rotate it to go through X
+            screw_hole = make_cylinder_cutter(
+                f"Bracket_Opposite{i}_ScrewHole{h}",
+                bracket_cx,
+                hole_y,
+                bracket_cz,
+                BRACKET_SCREW_D / 2,
+                BRACKET_THICKNESS + 2 * BOOL_EXTRA,
+            )
+            # Rotate to make hole go through X direction (through bracket thickness)
+            screw_hole.rotation_euler = (0, math.pi / 2, 0)
+            bpy.context.view_layer.objects.active = screw_hole
+            screw_hole.select_set(True)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+            screw_hole.select_set(False)
+            bool_diff(bracket, screw_hole)
+
+    # Union bracket with the appropriate panel half
+    if ENABLE_INTERLOCK:
+        # Determine which half this bracket belongs to based on Y position
+        if bracket_y < 0:
+            bool_union(panel_half1, bracket)
+        else:
+            bool_union(panel_half2, bracket)
+    else:
+        bool_union(panels[0], bracket)
+
 
 # ════════════════════════════════════════════════════════════════
 #  EXPORT STL
@@ -601,7 +668,7 @@ print(
     f"  Panel dimensions      : {PANEL_WIDTH:.2f} × {PANEL_LENGTH:.2f} × {PANEL_THICKNESS:.2f} mm"
 )
 print(f"  Semi-circle cutouts   : Ø{HOLE_DIAMETER:.2f} mm (both long edges)")
-print(f"  Number of brackets    : {NUM_BRACKETS}")
+print(f"  Number of brackets    : {NUM_BRACKETS * 2} ({NUM_BRACKETS} per edge)")
 print(f"  Bracket dimensions    : {BRACKET_HORIZ_WIDTH:.2f} × {BRACKET_HORIZ_LENGTH:.2f} mm")
 print(f"  Screw holes/bracket   : {BRACKET_SCREW_HOLES}")
 if ENABLE_INTERLOCK:
